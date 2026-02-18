@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0b6bcb" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="apple-touch-icon" href="./icons/icon-192.png" />
-  <title>BTC/ETH/USDT/USDC 資産チェッカー</title>
+  <title>資産チェッカー (暗号資産 + 円資産)</title>
   <style>
     :root {
       --bg: #f7f9fc;
@@ -230,8 +230,8 @@
 <body>
   <main>
     <section class="card">
-      <h1>BTC/ETH/USDT/USDC 資産チェッカー</h1>
-      <p class="sub">USDTとUSDCはUSD建て価格を当日のUSD/JPYで円換算して表示します。</p>
+      <h1>資産チェッカー (暗号資産 + 円資産)</h1>
+      <p class="sub">USDT/USDCはUSD建て価格を当日のUSD/JPYで円換算。投資信託と預金は円で手入力します。</p>
     </section>
 
     <section class="card">
@@ -252,10 +252,18 @@
           USDC 保有数量
           <input id="usdcAmount" type="number" step="0.000001" min="0" placeholder="例: 350" />
         </label>
+        <label>
+          投資信託 (円)
+          <input id="fundYen" type="number" step="1" min="0" placeholder="例: 1200000" />
+        </label>
+        <label>
+          預金 (円)
+          <input id="depositYen" type="number" step="1" min="0" placeholder="例: 350000" />
+        </label>
       </div>
 
       <div class="actions">
-        <button id="saveBtn" class="primary" type="button">数量を保存</button>
+        <button id="saveBtn" class="primary" type="button">保有情報を保存</button>
         <button id="refreshBtn" class="secondary" type="button">価格を更新</button>
       </div>
 
@@ -294,6 +302,14 @@
           <p id="usdJpy" class="stat-value">-</p>
         </article>
         <article class="stat">
+          <p class="stat-title">投資信託 (円)</p>
+          <p id="fundValue" class="stat-value">-</p>
+        </article>
+        <article class="stat">
+          <p class="stat-title">預金 (円)</p>
+          <p id="depositValue" class="stat-value">-</p>
+        </article>
+        <article class="stat">
           <p class="stat-title">総資産評価額 (円)</p>
           <p id="totalValue" class="stat-value">-</p>
         </article>
@@ -310,7 +326,7 @@
   </main>
 
   <script>
-    const STORAGE_KEY = "portfolio_btc_eth_usdt_usdc_v1";
+    const STORAGE_KEY = "portfolio_btc_eth_usdt_usdc_fund_deposit_v1";
     const SVG_KEY = "portfolio_custom_svg_v1";
     const PRICE_URL = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,tether,usd-coin&vs_currencies=jpy,usd";
     const FX_URL = "https://api.frankfurter.app/latest?from=USD&to=JPY";
@@ -319,12 +335,16 @@
     const ethAmountEl = document.getElementById("ethAmount");
     const usdtAmountEl = document.getElementById("usdtAmount");
     const usdcAmountEl = document.getElementById("usdcAmount");
+    const fundYenEl = document.getElementById("fundYen");
+    const depositYenEl = document.getElementById("depositYen");
 
     const btcPriceEl = document.getElementById("btcPrice");
     const ethPriceEl = document.getElementById("ethPrice");
     const usdtPriceUsdEl = document.getElementById("usdtPriceUsd");
     const usdcPriceUsdEl = document.getElementById("usdcPriceUsd");
     const usdJpyEl = document.getElementById("usdJpy");
+    const fundValueEl = document.getElementById("fundValue");
+    const depositValueEl = document.getElementById("depositValue");
     const totalValueEl = document.getElementById("totalValue");
     const statusEl = document.getElementById("status");
     const assetPieEl = document.getElementById("assetPie");
@@ -334,7 +354,7 @@
     const svgPreviewEl = document.getElementById("svgPreview");
     const saveBtn = document.getElementById("saveBtn");
     const refreshBtn = document.getElementById("refreshBtn");
-    let lastPieValues = { btc: 0, eth: 0, usdt: 0, usdc: 0 };
+    let lastPieValues = { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0 };
 
     function safeNumber(value) {
       const n = Number(value);
@@ -345,16 +365,18 @@
       try {
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
         if (!data || typeof data !== "object") {
-          return { btc: 0, eth: 0, usdt: 0, usdc: 0 };
+          return { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0 };
         }
         return {
           btc: safeNumber(data.btc),
           eth: safeNumber(data.eth),
           usdt: safeNumber(data.usdt),
-          usdc: safeNumber(data.usdc)
+          usdc: safeNumber(data.usdc),
+          fund: safeNumber(data.fund),
+          deposit: safeNumber(data.deposit)
         };
       } catch {
-        return { btc: 0, eth: 0, usdt: 0, usdc: 0 };
+        return { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0 };
       }
     }
 
@@ -363,10 +385,12 @@
         btc: safeNumber(btcAmountEl.value),
         eth: safeNumber(ethAmountEl.value),
         usdt: safeNumber(usdtAmountEl.value),
-        usdc: safeNumber(usdcAmountEl.value)
+        usdc: safeNumber(usdcAmountEl.value),
+        fund: safeNumber(fundYenEl.value),
+        deposit: safeNumber(depositYenEl.value)
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-      setStatus("保有数量を保存しました。", false);
+      setStatus("保有情報を保存しました。", false);
       return settings;
     }
 
@@ -403,13 +427,17 @@
         btc: safeNumber(values.btc),
         eth: safeNumber(values.eth),
         usdt: safeNumber(values.usdt),
-        usdc: safeNumber(values.usdc)
+        usdc: safeNumber(values.usdc),
+        fund: safeNumber(values.fund),
+        deposit: safeNumber(values.deposit)
       };
       const items = [
         { label: "BTC", value: lastPieValues.btc, color: "#f7931a" },
         { label: "ETH", value: lastPieValues.eth, color: "#627eea" },
         { label: "USDT", value: lastPieValues.usdt, color: "#26a17b" },
-        { label: "USDC", value: lastPieValues.usdc, color: "#2775ca" }
+        { label: "USDC", value: lastPieValues.usdc, color: "#2775ca" },
+        { label: "投資信託", value: lastPieValues.fund, color: "#c05621" },
+        { label: "預金", value: lastPieValues.deposit, color: "#4a5568" }
       ];
 
       const total = items.reduce((sum, item) => sum + item.value, 0);
@@ -489,6 +517,8 @@
       ethAmountEl.value = settings.eth || "";
       usdtAmountEl.value = settings.usdt || "";
       usdcAmountEl.value = settings.usdc || "";
+      fundYenEl.value = settings.fund || "";
+      depositYenEl.value = settings.deposit || "";
 
       setStatus("価格を取得しています...", false);
 
@@ -519,26 +549,42 @@
         const ethValueJpy = settings.eth * ethPriceJpy;
         const usdtValueJpy = settings.usdt * usdtPriceUsd * usdJpy;
         const usdcValueJpy = settings.usdc * usdcPriceUsd * usdJpy;
-        const totalJpy = btcValueJpy + ethValueJpy + usdtValueJpy + usdcValueJpy;
+        const fundValueJpy = settings.fund;
+        const depositValueJpy = settings.deposit;
+        const totalJpy = btcValueJpy + ethValueJpy + usdtValueJpy + usdcValueJpy + fundValueJpy + depositValueJpy;
 
         btcPriceEl.textContent = formatYen(btcPriceJpy);
         ethPriceEl.textContent = formatYen(ethPriceJpy);
         usdtPriceUsdEl.textContent = formatUsd(usdtPriceUsd);
         usdcPriceUsdEl.textContent = formatUsd(usdcPriceUsd);
         usdJpyEl.textContent = formatFx(usdJpy);
+        fundValueEl.textContent = formatYen(fundValueJpy);
+        depositValueEl.textContent = formatYen(depositValueJpy);
         totalValueEl.textContent = formatYen(totalJpy);
         drawAssetPie({
           btc: btcValueJpy,
           eth: ethValueJpy,
           usdt: usdtValueJpy,
-          usdc: usdcValueJpy
+          usdc: usdcValueJpy,
+          fund: fundValueJpy,
+          deposit: depositValueJpy
         });
 
         const now = new Date();
         setStatus(`最終更新: ${now.toLocaleString("ja-JP")}`, false);
       } catch {
         setStatus("価格の取得に失敗しました。通信環境を確認して再読み込みしてください。", true);
-        drawAssetPie({ btc: 0, eth: 0, usdt: 0, usdc: 0 });
+        const fundOnly = safeNumber(fundYenEl.value);
+        const depositOnly = safeNumber(depositYenEl.value);
+        btcPriceEl.textContent = "-";
+        ethPriceEl.textContent = "-";
+        usdtPriceUsdEl.textContent = "-";
+        usdcPriceUsdEl.textContent = "-";
+        usdJpyEl.textContent = "-";
+        fundValueEl.textContent = formatYen(fundOnly);
+        depositValueEl.textContent = formatYen(depositOnly);
+        totalValueEl.textContent = formatYen(fundOnly + depositOnly);
+        drawAssetPie({ btc: 0, eth: 0, usdt: 0, usdc: 0, fund: fundOnly, deposit: depositOnly });
       }
     }
 
@@ -553,6 +599,8 @@
     ethAmountEl.addEventListener("blur", saveSettings);
     usdtAmountEl.addEventListener("blur", saveSettings);
     usdcAmountEl.addEventListener("blur", saveSettings);
+    fundYenEl.addEventListener("blur", saveSettings);
+    depositYenEl.addEventListener("blur", saveSettings);
 
     svgInputEl.addEventListener("change", () => {
       const file = svgInputEl.files && svgInputEl.files[0];
@@ -587,7 +635,7 @@
     window.addEventListener("resize", () => drawAssetPie(lastPieValues));
 
     loadSvg();
-    drawAssetPie({ btc: 0, eth: 0, usdt: 0, usdc: 0 });
+    drawAssetPie({ btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0 });
     fetchAndRender();
     setInterval(fetchAndRender, 5 * 60 * 1000);
 
