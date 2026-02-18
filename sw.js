@@ -1,4 +1,4 @@
-const CACHE_NAME = "btc-eth-portfolio-v1";
+const CACHE_NAME = "btc-eth-portfolio-v2";
 const APP_SHELL = [
   "./",
   "./index.html",
