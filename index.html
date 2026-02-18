@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b6bcb" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <title>BTC/ETH/USDT/USDC 資産チェッカー</title>
+  <style>
+    :root {
+      --bg: #f7f9fc;
+      --card: #ffffff;
+      --text: #18202a;
+      --muted: #5e6b7a;
+      --line: #d9e0ea;
+      --accent: #0b6bcb;
+      --accent-2: #0e9f6e;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1000px 600px at 0% -20%, rgba(11, 107, 203, 0.08), transparent 60%),
+        radial-gradient(900px 500px at 100% 0%, rgba(14, 159, 110, 0.08), transparent 50%),
+        var(--bg);
+      min-height: 100vh;
+      padding: 24px 14px;
+    }
+
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+      display: grid;
+      gap: 14px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 10px 24px rgba(24, 32, 42, 0.08);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.4rem, 1.6vw + 1rem, 2rem);
+    }
+
+    .sub {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    input,
+    button {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 1rem;
+      background: #fff;
+      color: var(--text);
+    }
+
+    input:focus,
+    button:focus {
+      outline: 2px solid rgba(11, 107, 203, 0.25);
+      border-color: var(--accent);
+    }
+
+    .actions {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      margin-top: 12px;
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .secondary {
+      background: var(--accent-2);
+      color: #fff;
+      border-color: var(--accent-2);
+    }
+
+    .stats {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+
+    .stat {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fbfdff;
+    }
+
+    .stat-title {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin: 0;
+    }
+
+    .stat-value {
+      margin: 8px 0 0;
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+    }
+
+    .status {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+      min-height: 1.4em;
+    }
+
+    .error {
+      color: #b42318;
+      font-weight: 600;
+    }
+
+    .chart-wrap {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: minmax(220px, 320px) 1fr;
+      align-items: center;
+    }
+
+    .pie-canvas {
+      width: 100%;
+      max-width: 320px;
+      aspect-ratio: 1 / 1;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+    }
+
+    .legend {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 8px;
+    }
+
+    .legend li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      display: inline-block;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      flex: 0 0 auto;
+    }
+
+    @media (max-width: 740px) {
+      .chart-wrap {
+        grid-template-columns: 1fr;
+      }
+
+      .pie-canvas {
+        max-width: 100%;
+      }
+    }
+
+    .svg-tools {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      align-items: center;
+    }
+
+    .svg-preview {
+      margin-top: 12px;
+      min-height: 120px;
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+      background: #fbfdff;
+      padding: 12px;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+    }
+
+    .svg-preview img {
+      max-width: 100%;
+      max-height: 220px;
+      object-fit: contain;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card">
+      <h1>BTC/ETH/USDT/USDC 資産チェッカー</h1>
+      <p class="sub">USDTとUSDCはUSD建て価格を当日のUSD/JPYで円換算して表示します。</p>
+    </section>
+
+    <section class="card">
+      <div class="grid">
+        <label>
+          BTC 保有数量
+          <input id="btcAmount" type="number" step="0.00000001" min="0" placeholder="例: 0.12" />
+        </label>
+        <label>
+          ETH 保有数量
+          <input id="ethAmount" type="number" step="0.00000001" min="0" placeholder="例: 1.8" />
+        </label>
+        <label>
+          USDT 保有数量
+          <input id="usdtAmount" type="number" step="0.000001" min="0" placeholder="例: 500" />
+        </label>
+        <label>
+          USDC 保有数量
+          <input id="usdcAmount" type="number" step="0.000001" min="0" placeholder="例: 350" />
+        </label>
+      </div>
+
+      <div class="actions">
+        <button id="saveBtn" class="primary" type="button">数量を保存</button>
+        <button id="refreshBtn" class="secondary" type="button">価格を更新</button>
+      </div>
+
+      <p id="status" class="status"></p>
+    </section>
+
+    <section class="card">
+      <p class="sub">SVG読み込み（ロゴなど）</p>
+      <div class="svg-tools">
+        <input id="svgInput" type="file" accept=".svg,image/svg+xml" />
+        <button id="clearSvgBtn" type="button">SVGを削除</button>
+      </div>
+      <div id="svgPreview" class="svg-preview">SVGはまだ読み込まれていません</div>
+    </section>
+
+    <section class="card">
+      <div class="stats">
+        <article class="stat">
+          <p class="stat-title">BTC 価格 (円)</p>
+          <p id="btcPrice" class="stat-value">-</p>
+        </article>
+        <article class="stat">
+          <p class="stat-title">ETH 価格 (円)</p>
+          <p id="ethPrice" class="stat-value">-</p>
+        </article>
+        <article class="stat">
+          <p class="stat-title">USDT 価格 (USD)</p>
+          <p id="usdtPriceUsd" class="stat-value">-</p>
+        </article>
+        <article class="stat">
+          <p class="stat-title">USDC 価格 (USD)</p>
+          <p id="usdcPriceUsd" class="stat-value">-</p>
+        </article>
+        <article class="stat">
+          <p class="stat-title">USD/JPY</p>
+          <p id="usdJpy" class="stat-value">-</p>
+        </article>
+        <article class="stat">
+          <p class="stat-title">総資産評価額 (円)</p>
+          <p id="totalValue" class="stat-value">-</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="card">
+      <p class="sub">円換算資産の内訳</p>
+      <div class="chart-wrap">
+        <canvas id="assetPie" class="pie-canvas" aria-label="資産内訳の円グラフ"></canvas>
+        <ul id="assetLegend" class="legend"></ul>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const STORAGE_KEY = "portfolio_btc_eth_usdt_usdc_v1";
+    const SVG_KEY = "portfolio_custom_svg_v1";
+    const PRICE_URL = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,tether,usd-coin&vs_currencies=jpy,usd";
+    const FX_URL = "https://api.frankfurter.app/latest?from=USD&to=JPY";
+
+    const btcAmountEl = document.getElementById("btcAmount");
+    const ethAmountEl = document.getElementById("ethAmount");
+    const usdtAmountEl = document.getElementById("usdtAmount");
+    const usdcAmountEl = document.getElementById("usdcAmount");
+
+    const btcPriceEl = document.getElementById("btcPrice");
+    const ethPriceEl = document.getElementById("ethPrice");
+    const usdtPriceUsdEl = document.getElementById("usdtPriceUsd");
+    const usdcPriceUsdEl = document.getElementById("usdcPriceUsd");
+    const usdJpyEl = document.getElementById("usdJpy");
+    const totalValueEl = document.getElementById("totalValue");
+    const statusEl = document.getElementById("status");
+    const assetPieEl = document.getElementById("assetPie");
+    const assetLegendEl = document.getElementById("assetLegend");
+    const svgInputEl = document.getElementById("svgInput");
+    const clearSvgBtn = document.getElementById("clearSvgBtn");
+    const svgPreviewEl = document.getElementById("svgPreview");
+    const saveBtn = document.getElementById("saveBtn");
+    const refreshBtn = document.getElementById("refreshBtn");
+    let lastPieValues = { btc: 0, eth: 0, usdt: 0, usdc: 0 };
+
+    function safeNumber(value) {
+      const n = Number(value);
+      return Number.isFinite(n) && n >= 0 ? n : 0;
+    }
+
+    function loadSettings() {
+      try {
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        if (!data || typeof data !== "object") {
+          return { btc: 0, eth: 0, usdt: 0, usdc: 0 };
+        }
+        return {
+          btc: safeNumber(data.btc),
+          eth: safeNumber(data.eth),
+          usdt: safeNumber(data.usdt),
+          usdc: safeNumber(data.usdc)
+        };
+      } catch {
+        return { btc: 0, eth: 0, usdt: 0, usdc: 0 };
+      }
+    }
+
+    function saveSettings() {
+      const settings = {
+        btc: safeNumber(btcAmountEl.value),
+        eth: safeNumber(ethAmountEl.value),
+        usdt: safeNumber(usdtAmountEl.value),
+        usdc: safeNumber(usdcAmountEl.value)
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+      setStatus("保有数量を保存しました。", false);
+      return settings;
+    }
+
+    function setStatus(message, isError) {
+      statusEl.textContent = message;
+      statusEl.classList.toggle("error", Boolean(isError));
+    }
+
+    function formatYen(value) {
+      return new Intl.NumberFormat("ja-JP", {
+        style: "currency",
+        currency: "JPY",
+        maximumFractionDigits: 0
+      }).format(value);
+    }
+
+    function formatUsd(value) {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 4
+      }).format(value);
+    }
+
+    function formatFx(value) {
+      return new Intl.NumberFormat("ja-JP", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 4
+      }).format(value);
+    }
+
+    function drawAssetPie(values) {
+      lastPieValues = {
+        btc: safeNumber(values.btc),
+        eth: safeNumber(values.eth),
+        usdt: safeNumber(values.usdt),
+        usdc: safeNumber(values.usdc)
+      };
+      const items = [
+        { label: "BTC", value: lastPieValues.btc, color: "#f7931a" },
+        { label: "ETH", value: lastPieValues.eth, color: "#627eea" },
+        { label: "USDT", value: lastPieValues.usdt, color: "#26a17b" },
+        { label: "USDC", value: lastPieValues.usdc, color: "#2775ca" }
+      ];
+
+      const total = items.reduce((sum, item) => sum + item.value, 0);
+      const rect = assetPieEl.getBoundingClientRect();
+      const cssSize = Math.max(220, Math.floor(rect.width || 280));
+      const ratio = window.devicePixelRatio || 1;
+      assetPieEl.width = Math.floor(cssSize * ratio);
+      assetPieEl.height = Math.floor(cssSize * ratio);
+
+      const ctx = assetPieEl.getContext("2d");
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.clearRect(0, 0, cssSize, cssSize);
+
+      const center = cssSize / 2;
+      const radius = center - 18;
+
+      if (total <= 0) {
+        ctx.fillStyle = "#9aa8b7";
+        ctx.font = '14px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif';
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("データなし", center, center);
+      } else {
+        let startAngle = -Math.PI / 2;
+        items.forEach((item) => {
+          if (item.value <= 0) return;
+          const slice = (item.value / total) * Math.PI * 2;
+          const endAngle = startAngle + slice;
+          ctx.beginPath();
+          ctx.moveTo(center, center);
+          ctx.arc(center, center, radius, startAngle, endAngle);
+          ctx.closePath();
+          ctx.fillStyle = item.color;
+          ctx.fill();
+          startAngle = endAngle;
+        });
+      }
+
+      assetLegendEl.innerHTML = "";
+      items.forEach((item) => {
+        const li = document.createElement("li");
+        const percent = total > 0 ? `${((item.value / total) * 100).toFixed(1)}%` : "0.0%";
+        li.innerHTML = `<span class="swatch" style="background:${item.color}"></span>${item.label}: ${formatYen(item.value)} (${percent})`;
+        assetLegendEl.appendChild(li);
+      });
+    }
+
+    function svgTextToDataUrl(svgText) {
+      return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
+    }
+
+    function renderSvg(svgText) {
+      if (!svgText) {
+        svgPreviewEl.textContent = "SVGはまだ読み込まれていません";
+        return;
+      }
+      const img = document.createElement("img");
+      img.alt = "読み込みSVG";
+      img.src = svgTextToDataUrl(svgText);
+      svgPreviewEl.textContent = "";
+      svgPreviewEl.appendChild(img);
+    }
+
+    function loadSvg() {
+      const svgText = localStorage.getItem(SVG_KEY) || "";
+      renderSvg(svgText);
+    }
+
+    function saveSvg(svgText) {
+      localStorage.setItem(SVG_KEY, svgText);
+      renderSvg(svgText);
+    }
+
+    async function fetchAndRender() {
+      const settings = loadSettings();
+      btcAmountEl.value = settings.btc || "";
+      ethAmountEl.value = settings.eth || "";
+      usdtAmountEl.value = settings.usdt || "";
+      usdcAmountEl.value = settings.usdc || "";
+
+      setStatus("価格を取得しています...", false);
+
+      try {
+        const [priceResponse, fxResponse] = await Promise.all([
+          fetch(PRICE_URL, { cache: "no-store" }),
+          fetch(FX_URL, { cache: "no-store" })
+        ]);
+
+        if (!priceResponse.ok || !fxResponse.ok) {
+          throw new Error("api error");
+        }
+
+        const priceData = await priceResponse.json();
+        const fxData = await fxResponse.json();
+
+        const btcPriceJpy = safeNumber(priceData?.bitcoin?.jpy);
+        const ethPriceJpy = safeNumber(priceData?.ethereum?.jpy);
+        const usdtPriceUsd = safeNumber(priceData?.tether?.usd);
+        const usdcPriceUsd = safeNumber(priceData?.["usd-coin"]?.usd);
+        const usdJpy = safeNumber(fxData?.rates?.JPY);
+
+        if (!btcPriceJpy || !ethPriceJpy || !usdtPriceUsd || !usdcPriceUsd || !usdJpy) {
+          throw new Error("missing values");
+        }
+
+        const btcValueJpy = settings.btc * btcPriceJpy;
+        const ethValueJpy = settings.eth * ethPriceJpy;
+        const usdtValueJpy = settings.usdt * usdtPriceUsd * usdJpy;
+        const usdcValueJpy = settings.usdc * usdcPriceUsd * usdJpy;
+        const totalJpy = btcValueJpy + ethValueJpy + usdtValueJpy + usdcValueJpy;
+
+        btcPriceEl.textContent = formatYen(btcPriceJpy);
+        ethPriceEl.textContent = formatYen(ethPriceJpy);
+        usdtPriceUsdEl.textContent = formatUsd(usdtPriceUsd);
+        usdcPriceUsdEl.textContent = formatUsd(usdcPriceUsd);
+        usdJpyEl.textContent = formatFx(usdJpy);
+        totalValueEl.textContent = formatYen(totalJpy);
+        drawAssetPie({
+          btc: btcValueJpy,
+          eth: ethValueJpy,
+          usdt: usdtValueJpy,
+          usdc: usdcValueJpy
+        });
+
+        const now = new Date();
+        setStatus(`最終更新: ${now.toLocaleString("ja-JP")}`, false);
+      } catch {
+        setStatus("価格の取得に失敗しました。通信環境を確認して再読み込みしてください。", true);
+        drawAssetPie({ btc: 0, eth: 0, usdt: 0, usdc: 0 });
+      }
+    }
+
+    saveBtn.addEventListener("click", () => {
+      saveSettings();
+      fetchAndRender();
+    });
+
+    refreshBtn.addEventListener("click", fetchAndRender);
+
+    btcAmountEl.addEventListener("blur", saveSettings);
+    ethAmountEl.addEventListener("blur", saveSettings);
+    usdtAmountEl.addEventListener("blur", saveSettings);
+    usdcAmountEl.addEventListener("blur", saveSettings);
+
+    svgInputEl.addEventListener("change", () => {
+      const file = svgInputEl.files && svgInputEl.files[0];
+      if (!file) return;
+      if (!file.type.includes("svg") && !file.name.toLowerCase().endsWith(".svg")) {
+        setStatus("SVGファイルのみ読み込めます。", true);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const svgText = String(reader.result || "");
+        if (!svgText.includes("<svg")) {
+          setStatus("SVG形式として読み込めませんでした。", true);
+          return;
+        }
+        saveSvg(svgText);
+        setStatus("SVGを読み込みました。", false);
+      };
+      reader.onerror = () => {
+        setStatus("SVGの読み込みに失敗しました。", true);
+      };
+      reader.readAsText(file);
+    });
+
+    clearSvgBtn.addEventListener("click", () => {
+      localStorage.removeItem(SVG_KEY);
+      svgInputEl.value = "";
+      renderSvg("");
+      setStatus("SVGを削除しました。", false);
+    });
+
+    window.addEventListener("resize", () => drawAssetPie(lastPieValues));
+
+    loadSvg();
+    drawAssetPie({ btc: 0, eth: 0, usdt: 0, usdc: 0 });
+    fetchAndRender();
+    setInterval(fetchAndRender, 5 * 60 * 1000);
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js").catch(() => {
+          // Silent fail: app should still work as normal web page.
+        });
+      });
+    }
+  </script>
+</body>
+</html>
