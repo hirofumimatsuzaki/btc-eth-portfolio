@@ -31,6 +31,7 @@
 - `assets/icon-256.png`（透過）
 - `assets/icon-bg-512.png`（背景色 `#0F172A`）
 - `assets/icon-bg-256.png`（背景色 `#0F172A`）
+- PWA設定は `manifest.webmanifest` で `assets/icon-bg-192.png` / `assets/icon-bg-512.png` を参照
 
 ### 生成コマンド
 

@@ -7,7 +7,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const assetsDir = path.join(root, 'assets');
 const srcSvg = path.join(assetsDir, 'icon.svg');
 const bgColor = '#0F172A';
-const sizes = [512, 256];
+const sizes = [512, 256, 192];
 
 async function render() {
   const svg = await fs.readFile(srcSvg);

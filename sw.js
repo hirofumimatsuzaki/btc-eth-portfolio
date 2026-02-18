@@ -1,10 +1,12 @@
-const CACHE_NAME = "btc-eth-portfolio-v2";
+const CACHE_NAME = "btc-eth-portfolio-v3";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png"
+  "./assets/icon-bg-192.png",
+  "./assets/icon-bg-512.png",
+  "./assets/icon-192.png",
+  "./assets/icon-512.png"
 ];
 
 self.addEventListener("install", (event) => {
