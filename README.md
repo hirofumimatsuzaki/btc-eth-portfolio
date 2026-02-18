@@ -20,7 +20,4 @@
 - 5分ごとに自動更新（`価格を更新`ボタンでも手動更新可能）
 - `manifest.webmanifest` と `sw.js` を含むPWA対応（ホーム画面追加・オフライン時のシェル表示）
 
-## 公開のポイント（別アプリ化）
 
-- GitHubでは `btc-eth-portfolio/` を独立リポジトリとして公開するのが一番シンプル
-- PWAは `http://` または `https://` 配信が必要（`file://` 直開きだとService Workerは動きません）
