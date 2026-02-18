@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="BTC ETH portfolio icon">
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="136,196 224,156 292,176 380,120" stroke="#E2E8F0" stroke-width="12" />
+    <circle cx="136" cy="196" r="10" fill="#E2E8F0" />
+    <circle cx="224" cy="156" r="10" fill="#E2E8F0" />
+    <circle cx="292" cy="176" r="10" fill="#E2E8F0" />
+    <circle cx="380" cy="120" r="10" fill="#E2E8F0" />
+  </g>
+
+  <circle cx="218" cy="300" r="94" fill="#F59E0B" />
+  <circle cx="314" cy="300" r="94" fill="#94A3B8" />
+
+  <text x="218" y="328" text-anchor="middle" font-size="84" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif" fill="#E2E8F0" font-weight="700">₿</text>
+  <text x="314" y="328" text-anchor="middle" font-size="74" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif" fill="#E2E8F0" font-weight="700">Ξ</text>
+</svg>

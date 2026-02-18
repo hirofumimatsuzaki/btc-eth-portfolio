@@ -21,3 +21,30 @@
 - 5分ごとに自動更新（`価格を更新`ボタンでも手動更新可能）
 - `manifest.webmanifest` と `sw.js` を含むPWA対応（ホーム画面追加・オフライン時のシェル表示）
 
+
+## Repository Icon Assets
+
+`assets/` にリポジトリ用アイコンを配置しています。
+
+- `assets/icon.svg`（ベクター）
+- `assets/icon-512.png`（透過）
+- `assets/icon-256.png`（透過）
+- `assets/icon-bg-512.png`（背景色 `#0F172A`）
+- `assets/icon-bg-256.png`（背景色 `#0F172A`）
+
+### 生成コマンド
+
+```bash
+npm install
+npm run render:icons
+```
+
+### Preview
+
+Transparent 256:
+
+![portfolio icon transparent](./assets/icon-256.png)
+
+Navy background 256:
+
+![portfolio icon navy](./assets/icon-bg-256.png)

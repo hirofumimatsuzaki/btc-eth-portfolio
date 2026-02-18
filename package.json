@@ -1,0 +1,16 @@
+{
+  "name": "btc-eth-portfolio",
+  "version": "1.0.0",
+  "description": "ページを開くと、保存済みの保有数量に対して現在価格を取得し、円換算の評価額を表示するシンプルなWebアプリです。 `minitask` とは別アプリとして、この `btc-eth-portfolio` ディレクトリ単体で公開できます。",
+  "main": "sw.js",
+  "scripts": {
+    "render:icons": "node ./scripts/render-icons.mjs",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "sharp": "^0.34.5"
+  }
+}
