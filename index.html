@@ -231,7 +231,7 @@
   <main>
     <section class="card">
       <h1>資産チェッカー (暗号資産 + 円資産)</h1>
-      <p class="sub">USDT/USDCはUSD建て価格を当日のUSD/JPYで円換算。投資信託と預金は円で手入力します。</p>
+      <p class="sub">USDT/USDCはUSD建て価格を当日のUSD/JPYで円換算。投資信託・預金・小規模企業共済は円で手入力します。</p>
     </section>
 
     <section class="card">
@@ -259,6 +259,10 @@
         <label>
           預金 (円)
           <input id="depositYen" type="number" step="1" min="0" placeholder="例: 350000" />
+        </label>
+        <label>
+          小規模企業共済 (円)
+          <input id="kyosaiYen" type="number" step="1" min="0" placeholder="例: 1800000" />
         </label>
       </div>
 
@@ -310,6 +314,10 @@
           <p id="depositValue" class="stat-value">-</p>
         </article>
         <article class="stat">
+          <p class="stat-title">小規模企業共済 (円)</p>
+          <p id="kyosaiValue" class="stat-value">-</p>
+        </article>
+        <article class="stat">
           <p class="stat-title">総資産評価額 (円)</p>
           <p id="totalValue" class="stat-value">-</p>
         </article>
@@ -326,7 +334,8 @@
   </main>
 
   <script>
-    const STORAGE_KEY = "portfolio_btc_eth_usdt_usdc_fund_deposit_v1";
+    const STORAGE_KEY = "portfolio_btc_eth_usdt_usdc_fund_deposit_kyosai_v1";
+    const LEGACY_STORAGE_KEY = "portfolio_btc_eth_usdt_usdc_fund_deposit_v1";
     const SVG_KEY = "portfolio_custom_svg_v1";
     const PRICE_URL = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,tether,usd-coin&vs_currencies=jpy,usd";
     const FX_URL = "https://api.frankfurter.app/latest?from=USD&to=JPY";
@@ -337,6 +346,7 @@
     const usdcAmountEl = document.getElementById("usdcAmount");
     const fundYenEl = document.getElementById("fundYen");
     const depositYenEl = document.getElementById("depositYen");
+    const kyosaiYenEl = document.getElementById("kyosaiYen");
 
     const btcPriceEl = document.getElementById("btcPrice");
     const ethPriceEl = document.getElementById("ethPrice");
@@ -345,6 +355,7 @@
     const usdJpyEl = document.getElementById("usdJpy");
     const fundValueEl = document.getElementById("fundValue");
     const depositValueEl = document.getElementById("depositValue");
+    const kyosaiValueEl = document.getElementById("kyosaiValue");
     const totalValueEl = document.getElementById("totalValue");
     const statusEl = document.getElementById("status");
     const assetPieEl = document.getElementById("assetPie");
@@ -354,7 +365,7 @@
     const svgPreviewEl = document.getElementById("svgPreview");
     const saveBtn = document.getElementById("saveBtn");
     const refreshBtn = document.getElementById("refreshBtn");
-    let lastPieValues = { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0 };
+    let lastPieValues = { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0 };
 
     function safeNumber(value) {
       const n = Number(value);
@@ -363,9 +374,11 @@
 
     function loadSettings() {
       try {
-        const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        const latest = localStorage.getItem(STORAGE_KEY);
+        const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+        const data = JSON.parse(latest || legacy || "null");
         if (!data || typeof data !== "object") {
-          return { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0 };
+          return { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0 };
         }
         return {
           btc: safeNumber(data.btc),
@@ -373,10 +386,11 @@
           usdt: safeNumber(data.usdt),
           usdc: safeNumber(data.usdc),
           fund: safeNumber(data.fund),
-          deposit: safeNumber(data.deposit)
+          deposit: safeNumber(data.deposit),
+          kyosai: safeNumber(data.kyosai)
         };
       } catch {
-        return { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0 };
+        return { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0 };
       }
     }
 
@@ -387,7 +401,8 @@
         usdt: safeNumber(usdtAmountEl.value),
         usdc: safeNumber(usdcAmountEl.value),
         fund: safeNumber(fundYenEl.value),
-        deposit: safeNumber(depositYenEl.value)
+        deposit: safeNumber(depositYenEl.value),
+        kyosai: safeNumber(kyosaiYenEl.value)
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
       setStatus("保有情報を保存しました。", false);
@@ -429,7 +444,8 @@
         usdt: safeNumber(values.usdt),
         usdc: safeNumber(values.usdc),
         fund: safeNumber(values.fund),
-        deposit: safeNumber(values.deposit)
+        deposit: safeNumber(values.deposit),
+        kyosai: safeNumber(values.kyosai)
       };
       const items = [
         { label: "BTC", value: lastPieValues.btc, color: "#f7931a" },
@@ -437,7 +453,8 @@
         { label: "USDT", value: lastPieValues.usdt, color: "#26a17b" },
         { label: "USDC", value: lastPieValues.usdc, color: "#2775ca" },
         { label: "投資信託", value: lastPieValues.fund, color: "#c05621" },
-        { label: "預金", value: lastPieValues.deposit, color: "#4a5568" }
+        { label: "預金", value: lastPieValues.deposit, color: "#4a5568" },
+        { label: "小規模企業共済", value: lastPieValues.kyosai, color: "#805ad5" }
       ];
 
       const total = items.reduce((sum, item) => sum + item.value, 0);
@@ -519,6 +536,7 @@
       usdcAmountEl.value = settings.usdc || "";
       fundYenEl.value = settings.fund || "";
       depositYenEl.value = settings.deposit || "";
+      kyosaiYenEl.value = settings.kyosai || "";
 
       setStatus("価格を取得しています...", false);
 
@@ -551,7 +569,8 @@
         const usdcValueJpy = settings.usdc * usdcPriceUsd * usdJpy;
         const fundValueJpy = settings.fund;
         const depositValueJpy = settings.deposit;
-        const totalJpy = btcValueJpy + ethValueJpy + usdtValueJpy + usdcValueJpy + fundValueJpy + depositValueJpy;
+        const kyosaiValueJpy = settings.kyosai;
+        const totalJpy = btcValueJpy + ethValueJpy + usdtValueJpy + usdcValueJpy + fundValueJpy + depositValueJpy + kyosaiValueJpy;
 
         btcPriceEl.textContent = formatYen(btcPriceJpy);
         ethPriceEl.textContent = formatYen(ethPriceJpy);
@@ -560,6 +579,7 @@
         usdJpyEl.textContent = formatFx(usdJpy);
         fundValueEl.textContent = formatYen(fundValueJpy);
         depositValueEl.textContent = formatYen(depositValueJpy);
+        kyosaiValueEl.textContent = formatYen(kyosaiValueJpy);
         totalValueEl.textContent = formatYen(totalJpy);
         drawAssetPie({
           btc: btcValueJpy,
@@ -567,7 +587,8 @@
           usdt: usdtValueJpy,
           usdc: usdcValueJpy,
           fund: fundValueJpy,
-          deposit: depositValueJpy
+          deposit: depositValueJpy,
+          kyosai: kyosaiValueJpy
         });
 
         const now = new Date();
@@ -576,6 +597,7 @@
         setStatus("価格の取得に失敗しました。通信環境を確認して再読み込みしてください。", true);
         const fundOnly = safeNumber(fundYenEl.value);
         const depositOnly = safeNumber(depositYenEl.value);
+        const kyosaiOnly = safeNumber(kyosaiYenEl.value);
         btcPriceEl.textContent = "-";
         ethPriceEl.textContent = "-";
         usdtPriceUsdEl.textContent = "-";
@@ -583,8 +605,9 @@
         usdJpyEl.textContent = "-";
         fundValueEl.textContent = formatYen(fundOnly);
         depositValueEl.textContent = formatYen(depositOnly);
-        totalValueEl.textContent = formatYen(fundOnly + depositOnly);
-        drawAssetPie({ btc: 0, eth: 0, usdt: 0, usdc: 0, fund: fundOnly, deposit: depositOnly });
+        kyosaiValueEl.textContent = formatYen(kyosaiOnly);
+        totalValueEl.textContent = formatYen(fundOnly + depositOnly + kyosaiOnly);
+        drawAssetPie({ btc: 0, eth: 0, usdt: 0, usdc: 0, fund: fundOnly, deposit: depositOnly, kyosai: kyosaiOnly });
       }
     }
 
@@ -601,6 +624,7 @@
     usdcAmountEl.addEventListener("blur", saveSettings);
     fundYenEl.addEventListener("blur", saveSettings);
     depositYenEl.addEventListener("blur", saveSettings);
+    kyosaiYenEl.addEventListener("blur", saveSettings);
 
     svgInputEl.addEventListener("change", () => {
       const file = svgInputEl.files && svgInputEl.files[0];
@@ -635,7 +659,7 @@
     window.addEventListener("resize", () => drawAssetPie(lastPieValues));
 
     loadSvg();
-    drawAssetPie({ btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0 });
+    drawAssetPie({ btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0 });
     fetchAndRender();
     setInterval(fetchAndRender, 5 * 60 * 1000);
 
