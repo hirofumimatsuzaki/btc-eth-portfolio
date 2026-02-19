@@ -1,4 +1,4 @@
-const CACHE_NAME = "btc-eth-portfolio-v3";
+const CACHE_NAME = "btc-eth-portfolio-v4";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -37,6 +37,20 @@ self.addEventListener("fetch", (event) => {
 
   // External API requests should stay network-first and not be cached by SW.
   if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  // Always try network first for page navigations so new deployments appear quickly.
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const cloned = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, cloned));
+          return response;
+        })
+        .catch(() => caches.match(request).then((cached) => cached || caches.match("./index.html")))
+    );
     return;
   }
 
