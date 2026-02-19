@@ -150,6 +150,36 @@
       font-weight: 600;
     }
 
+    .goal-wrap {
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fbfdff;
+    }
+
+    .goal-track {
+      width: 100%;
+      height: 12px;
+      border-radius: 999px;
+      background: #e8eef7;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .goal-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #0b6bcb, #0e9f6e);
+      transition: width 0.25s ease;
+    }
+
+    .goal-meta {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
     .chart-wrap {
       display: grid;
       gap: 12px;
@@ -264,6 +294,10 @@
           小規模企業共済 (円)
           <input id="kyosaiYen" type="number" step="1" min="0" placeholder="例: 1800000" />
         </label>
+        <label>
+          目標総資産 (円)
+          <input id="goalYen" type="number" step="1" min="0" placeholder="例: 10000000" />
+        </label>
       </div>
 
       <div class="actions">
@@ -272,6 +306,34 @@
       </div>
 
       <p id="status" class="status"></p>
+    </section>
+
+    <section class="card">
+      <p class="sub">目標進捗と月次スナップショット</p>
+      <div class="goal-wrap">
+        <p id="goalMeta" class="goal-meta">目標を入力すると達成率を表示します</p>
+        <div class="goal-track">
+          <div id="goalFill" class="goal-fill"></div>
+        </div>
+      </div>
+      <div class="stats" style="margin-top:12px;">
+        <article class="stat">
+          <p class="stat-title">目標額 (円)</p>
+          <p id="goalTarget" class="stat-value">-</p>
+        </article>
+        <article class="stat">
+          <p class="stat-title">達成率</p>
+          <p id="goalPercent" class="stat-value">-</p>
+        </article>
+        <article class="stat">
+          <p class="stat-title">今月スナップショット</p>
+          <p id="thisMonthSnapshot" class="stat-value">-</p>
+        </article>
+        <article class="stat">
+          <p class="stat-title">前月比</p>
+          <p id="monthlyChange" class="stat-value">-</p>
+        </article>
+      </div>
     </section>
 
     <section class="card">
@@ -336,6 +398,7 @@
   <script>
     const STORAGE_KEY = "portfolio_btc_eth_usdt_usdc_fund_deposit_kyosai_v1";
     const LEGACY_STORAGE_KEY = "portfolio_btc_eth_usdt_usdc_fund_deposit_v1";
+    const SNAPSHOT_KEY = "portfolio_monthly_snapshots_v1";
     const SVG_KEY = "portfolio_custom_svg_v1";
     const PRICE_URL = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,tether,usd-coin&vs_currencies=jpy,usd";
     const FX_URL = "https://api.frankfurter.app/latest?from=USD&to=JPY";
@@ -347,6 +410,7 @@
     const fundYenEl = document.getElementById("fundYen");
     const depositYenEl = document.getElementById("depositYen");
     const kyosaiYenEl = document.getElementById("kyosaiYen");
+    const goalYenEl = document.getElementById("goalYen");
 
     const btcPriceEl = document.getElementById("btcPrice");
     const ethPriceEl = document.getElementById("ethPrice");
@@ -357,6 +421,12 @@
     const depositValueEl = document.getElementById("depositValue");
     const kyosaiValueEl = document.getElementById("kyosaiValue");
     const totalValueEl = document.getElementById("totalValue");
+    const goalTargetEl = document.getElementById("goalTarget");
+    const goalPercentEl = document.getElementById("goalPercent");
+    const goalMetaEl = document.getElementById("goalMeta");
+    const goalFillEl = document.getElementById("goalFill");
+    const thisMonthSnapshotEl = document.getElementById("thisMonthSnapshot");
+    const monthlyChangeEl = document.getElementById("monthlyChange");
     const statusEl = document.getElementById("status");
     const assetPieEl = document.getElementById("assetPie");
     const assetLegendEl = document.getElementById("assetLegend");
@@ -378,7 +448,7 @@
         const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
         const data = JSON.parse(latest || legacy || "null");
         if (!data || typeof data !== "object") {
-          return { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0 };
+          return { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0, goal: 0 };
         }
         return {
           btc: safeNumber(data.btc),
@@ -387,10 +457,11 @@
           usdc: safeNumber(data.usdc),
           fund: safeNumber(data.fund),
           deposit: safeNumber(data.deposit),
-          kyosai: safeNumber(data.kyosai)
+          kyosai: safeNumber(data.kyosai),
+          goal: safeNumber(data.goal)
         };
       } catch {
-        return { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0 };
+        return { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0, goal: 0 };
       }
     }
 
@@ -402,7 +473,8 @@
         usdc: safeNumber(usdcAmountEl.value),
         fund: safeNumber(fundYenEl.value),
         deposit: safeNumber(depositYenEl.value),
-        kyosai: safeNumber(kyosaiYenEl.value)
+        kyosai: safeNumber(kyosaiYenEl.value),
+        goal: safeNumber(goalYenEl.value)
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
       setStatus("保有情報を保存しました。", false);
@@ -435,6 +507,65 @@
         minimumFractionDigits: 2,
         maximumFractionDigits: 4
       }).format(value);
+    }
+
+    function monthId(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      return `${y}-${m}`;
+    }
+
+    function prevMonthId(date) {
+      const d = new Date(date.getFullYear(), date.getMonth() - 1, 1);
+      return monthId(d);
+    }
+
+    function loadSnapshots() {
+      try {
+        const raw = JSON.parse(localStorage.getItem(SNAPSHOT_KEY) || "{}");
+        return raw && typeof raw === "object" ? raw : {};
+      } catch {
+        return {};
+      }
+    }
+
+    function saveSnapshots(snapshots) {
+      localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(snapshots));
+    }
+
+    function renderGoalProgress(totalJpy, goalYen) {
+      goalTargetEl.textContent = goalYen > 0 ? formatYen(goalYen) : "-";
+      if (goalYen <= 0) {
+        goalPercentEl.textContent = "-";
+        goalMetaEl.textContent = "目標を入力すると達成率を表示します";
+        goalFillEl.style.width = "0%";
+        return;
+      }
+      const ratio = totalJpy / goalYen;
+      const percent = ratio * 100;
+      goalPercentEl.textContent = `${percent.toFixed(1)}%`;
+      goalMetaEl.textContent = `${formatYen(totalJpy)} / ${formatYen(goalYen)}`;
+      goalFillEl.style.width = `${Math.max(0, Math.min(percent, 100))}%`;
+    }
+
+    function renderMonthlySnapshot(totalJpy) {
+      const now = new Date();
+      const currentId = monthId(now);
+      const previousId = prevMonthId(now);
+      const snapshots = loadSnapshots();
+      snapshots[currentId] = totalJpy;
+      saveSnapshots(snapshots);
+
+      thisMonthSnapshotEl.textContent = formatYen(totalJpy);
+      const prevTotal = safeNumber(snapshots[previousId]);
+      if (prevTotal <= 0) {
+        monthlyChangeEl.textContent = "-";
+        return;
+      }
+      const diff = totalJpy - prevTotal;
+      const diffPct = (diff / prevTotal) * 100;
+      const sign = diff >= 0 ? "+" : "";
+      monthlyChangeEl.textContent = `${sign}${formatYen(diff)} (${sign}${diffPct.toFixed(1)}%)`;
     }
 
     function drawAssetPie(values) {
@@ -537,6 +668,7 @@
       fundYenEl.value = settings.fund || "";
       depositYenEl.value = settings.deposit || "";
       kyosaiYenEl.value = settings.kyosai || "";
+      goalYenEl.value = settings.goal || "";
 
       setStatus("価格を取得しています...", false);
 
@@ -581,6 +713,8 @@
         depositValueEl.textContent = formatYen(depositValueJpy);
         kyosaiValueEl.textContent = formatYen(kyosaiValueJpy);
         totalValueEl.textContent = formatYen(totalJpy);
+        renderGoalProgress(totalJpy, settings.goal);
+        renderMonthlySnapshot(totalJpy);
         drawAssetPie({
           btc: btcValueJpy,
           eth: ethValueJpy,
@@ -606,7 +740,10 @@
         fundValueEl.textContent = formatYen(fundOnly);
         depositValueEl.textContent = formatYen(depositOnly);
         kyosaiValueEl.textContent = formatYen(kyosaiOnly);
-        totalValueEl.textContent = formatYen(fundOnly + depositOnly + kyosaiOnly);
+        const fallbackTotal = fundOnly + depositOnly + kyosaiOnly;
+        totalValueEl.textContent = formatYen(fallbackTotal);
+        renderGoalProgress(fallbackTotal, settings.goal);
+        renderMonthlySnapshot(fallbackTotal);
         drawAssetPie({ btc: 0, eth: 0, usdt: 0, usdc: 0, fund: fundOnly, deposit: depositOnly, kyosai: kyosaiOnly });
       }
     }
@@ -625,6 +762,7 @@
     fundYenEl.addEventListener("blur", saveSettings);
     depositYenEl.addEventListener("blur", saveSettings);
     kyosaiYenEl.addEventListener("blur", saveSettings);
+    goalYenEl.addEventListener("blur", saveSettings);
 
     svgInputEl.addEventListener("change", () => {
       const file = svgInputEl.files && svgInputEl.files[0];
