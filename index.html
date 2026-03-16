@@ -255,6 +255,59 @@
       max-height: 220px;
       object-fit: contain;
     }
+
+    .custom-asset-form {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: minmax(180px, 1.3fr) minmax(160px, 1fr) auto;
+      align-items: end;
+    }
+
+    .custom-asset-list {
+      list-style: none;
+      padding: 0;
+      margin: 12px 0 0;
+      display: grid;
+      gap: 10px;
+    }
+
+    .custom-asset-item {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 1fr auto auto;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fbfdff;
+    }
+
+    .custom-asset-name {
+      font-weight: 700;
+    }
+
+    .custom-asset-amount {
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .ghost-btn {
+      width: auto;
+      background: #fff;
+      color: var(--text);
+      border-color: var(--line);
+      padding: 9px 12px;
+    }
+
+    @media (max-width: 740px) {
+      .custom-asset-form {
+        grid-template-columns: 1fr;
+      }
+
+      .custom-asset-item {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
@@ -337,6 +390,22 @@
     </section>
 
     <section class="card">
+      <p class="sub">好きな資産を追加 (円評価)</p>
+      <div class="custom-asset-form">
+        <label>
+          資産名
+          <input id="customAssetName" type="text" maxlength="24" placeholder="例: 個別株 / 現金 / ポイント" />
+        </label>
+        <label>
+          金額 (円)
+          <input id="customAssetAmount" type="number" step="1" min="0" placeholder="例: 250000" />
+        </label>
+        <button id="addCustomAssetBtn" class="ghost-btn" type="button">資産を追加</button>
+      </div>
+      <ul id="customAssetList" class="custom-asset-list"></ul>
+    </section>
+
+    <section class="card">
       <p class="sub">SVG読み込み（ロゴなど）</p>
       <div class="svg-tools">
         <input id="svgInput" type="file" accept=".svg,image/svg+xml" />
@@ -396,7 +465,8 @@
   </main>
 
   <script>
-    const STORAGE_KEY = "portfolio_btc_eth_usdt_usdc_fund_deposit_kyosai_v1";
+    const STORAGE_KEY = "portfolio_btc_eth_usdt_usdc_fund_deposit_kyosai_custom_v1";
+    const PREVIOUS_STORAGE_KEY = "portfolio_btc_eth_usdt_usdc_fund_deposit_kyosai_v1";
     const LEGACY_STORAGE_KEY = "portfolio_btc_eth_usdt_usdc_fund_deposit_v1";
     const SNAPSHOT_KEY = "portfolio_monthly_snapshots_v1";
     const SVG_KEY = "portfolio_custom_svg_v1";
@@ -411,6 +481,8 @@
     const depositYenEl = document.getElementById("depositYen");
     const kyosaiYenEl = document.getElementById("kyosaiYen");
     const goalYenEl = document.getElementById("goalYen");
+    const customAssetNameEl = document.getElementById("customAssetName");
+    const customAssetAmountEl = document.getElementById("customAssetAmount");
 
     const btcPriceEl = document.getElementById("btcPrice");
     const ethPriceEl = document.getElementById("ethPrice");
@@ -430,25 +502,44 @@
     const statusEl = document.getElementById("status");
     const assetPieEl = document.getElementById("assetPie");
     const assetLegendEl = document.getElementById("assetLegend");
+    const customAssetListEl = document.getElementById("customAssetList");
     const svgInputEl = document.getElementById("svgInput");
     const clearSvgBtn = document.getElementById("clearSvgBtn");
     const svgPreviewEl = document.getElementById("svgPreview");
+    const addCustomAssetBtn = document.getElementById("addCustomAssetBtn");
     const saveBtn = document.getElementById("saveBtn");
     const refreshBtn = document.getElementById("refreshBtn");
-    let lastPieValues = { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0 };
+    let lastPieValues = { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0, custom: [] };
 
     function safeNumber(value) {
       const n = Number(value);
       return Number.isFinite(n) && n >= 0 ? n : 0;
     }
 
+    function normalizeCustomAssets(items) {
+      if (!Array.isArray(items)) return [];
+      return items
+        .map((item, index) => ({
+          id: typeof item?.id === "string" && item.id ? item.id : `asset-${Date.now()}-${index}`,
+          name: String(item?.name || "").trim().slice(0, 24),
+          amount: safeNumber(item?.amount)
+        }))
+        .filter((item) => item.name && item.amount >= 0);
+    }
+
+    function getCustomAssetColor(index) {
+      const palette = ["#ef4444", "#f59e0b", "#10b981", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899"];
+      return palette[index % palette.length];
+    }
+
     function loadSettings() {
       try {
         const latest = localStorage.getItem(STORAGE_KEY);
+        const previous = localStorage.getItem(PREVIOUS_STORAGE_KEY);
         const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
-        const data = JSON.parse(latest || legacy || "null");
+        const data = JSON.parse(latest || previous || legacy || "null");
         if (!data || typeof data !== "object") {
-          return { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0, goal: 0 };
+          return { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0, goal: 0, customAssets: [] };
         }
         return {
           btc: safeNumber(data.btc),
@@ -458,14 +549,17 @@
           fund: safeNumber(data.fund),
           deposit: safeNumber(data.deposit),
           kyosai: safeNumber(data.kyosai),
-          goal: safeNumber(data.goal)
+          goal: safeNumber(data.goal),
+          customAssets: normalizeCustomAssets(data.customAssets)
         };
       } catch {
-        return { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0, goal: 0 };
+        return { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0, goal: 0, customAssets: [] };
       }
     }
 
-    function saveSettings() {
+    function saveSettings(nextCustomAssets) {
+      const currentSettings = loadSettings();
+      const customAssets = Array.isArray(nextCustomAssets) ? nextCustomAssets : currentSettings.customAssets;
       const settings = {
         btc: safeNumber(btcAmountEl.value),
         eth: safeNumber(ethAmountEl.value),
@@ -474,11 +568,36 @@
         fund: safeNumber(fundYenEl.value),
         deposit: safeNumber(depositYenEl.value),
         kyosai: safeNumber(kyosaiYenEl.value),
-        goal: safeNumber(goalYenEl.value)
+        goal: safeNumber(goalYenEl.value),
+        customAssets: normalizeCustomAssets(customAssets)
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
       setStatus("保有情報を保存しました。", false);
       return settings;
+    }
+
+    function renderCustomAssets(customAssets) {
+      customAssetListEl.innerHTML = "";
+      if (!customAssets.length) {
+        const li = document.createElement("li");
+        li.className = "custom-asset-item";
+        li.textContent = "追加した資産はまだありません";
+        customAssetListEl.appendChild(li);
+        return;
+      }
+
+      customAssets.forEach((asset) => {
+        const li = document.createElement("li");
+        li.className = "custom-asset-item";
+        li.innerHTML = `
+          <div>
+            <div class="custom-asset-name">${asset.name}</div>
+            <div class="custom-asset-amount">${formatYen(asset.amount)}</div>
+          </div>
+          <button class="ghost-btn" type="button" data-remove-custom="${asset.id}">削除</button>
+        `;
+        customAssetListEl.appendChild(li);
+      });
     }
 
     function setStatus(message, isError) {
@@ -576,7 +695,8 @@
         usdc: safeNumber(values.usdc),
         fund: safeNumber(values.fund),
         deposit: safeNumber(values.deposit),
-        kyosai: safeNumber(values.kyosai)
+        kyosai: safeNumber(values.kyosai),
+        custom: normalizeCustomAssets(values.custom)
       };
       const items = [
         { label: "BTC", value: lastPieValues.btc, color: "#f7931a" },
@@ -587,6 +707,9 @@
         { label: "預金", value: lastPieValues.deposit, color: "#4a5568" },
         { label: "小規模企業共済", value: lastPieValues.kyosai, color: "#805ad5" }
       ];
+      lastPieValues.custom.forEach((asset, index) => {
+        items.push({ label: asset.name, value: asset.amount, color: getCustomAssetColor(index) });
+      });
 
       const total = items.reduce((sum, item) => sum + item.value, 0);
       const rect = assetPieEl.getBoundingClientRect();
@@ -669,6 +792,7 @@
       depositYenEl.value = settings.deposit || "";
       kyosaiYenEl.value = settings.kyosai || "";
       goalYenEl.value = settings.goal || "";
+      renderCustomAssets(settings.customAssets);
 
       setStatus("価格を取得しています...", false);
 
@@ -702,7 +826,8 @@
         const fundValueJpy = settings.fund;
         const depositValueJpy = settings.deposit;
         const kyosaiValueJpy = settings.kyosai;
-        const totalJpy = btcValueJpy + ethValueJpy + usdtValueJpy + usdcValueJpy + fundValueJpy + depositValueJpy + kyosaiValueJpy;
+        const customTotalJpy = settings.customAssets.reduce((sum, asset) => sum + asset.amount, 0);
+        const totalJpy = btcValueJpy + ethValueJpy + usdtValueJpy + usdcValueJpy + fundValueJpy + depositValueJpy + kyosaiValueJpy + customTotalJpy;
 
         btcPriceEl.textContent = formatYen(btcPriceJpy);
         ethPriceEl.textContent = formatYen(ethPriceJpy);
@@ -722,7 +847,8 @@
           usdc: usdcValueJpy,
           fund: fundValueJpy,
           deposit: depositValueJpy,
-          kyosai: kyosaiValueJpy
+          kyosai: kyosaiValueJpy,
+          custom: settings.customAssets
         });
 
         const now = new Date();
@@ -732,6 +858,7 @@
         const fundOnly = safeNumber(fundYenEl.value);
         const depositOnly = safeNumber(depositYenEl.value);
         const kyosaiOnly = safeNumber(kyosaiYenEl.value);
+        const customOnly = settings.customAssets.reduce((sum, asset) => sum + asset.amount, 0);
         btcPriceEl.textContent = "-";
         ethPriceEl.textContent = "-";
         usdtPriceUsdEl.textContent = "-";
@@ -740,11 +867,11 @@
         fundValueEl.textContent = formatYen(fundOnly);
         depositValueEl.textContent = formatYen(depositOnly);
         kyosaiValueEl.textContent = formatYen(kyosaiOnly);
-        const fallbackTotal = fundOnly + depositOnly + kyosaiOnly;
+        const fallbackTotal = fundOnly + depositOnly + kyosaiOnly + customOnly;
         totalValueEl.textContent = formatYen(fallbackTotal);
         renderGoalProgress(fallbackTotal, settings.goal);
         renderMonthlySnapshot(fallbackTotal);
-        drawAssetPie({ btc: 0, eth: 0, usdt: 0, usdc: 0, fund: fundOnly, deposit: depositOnly, kyosai: kyosaiOnly });
+        drawAssetPie({ btc: 0, eth: 0, usdt: 0, usdc: 0, fund: fundOnly, deposit: depositOnly, kyosai: kyosaiOnly, custom: settings.customAssets });
       }
     }
 
@@ -763,6 +890,36 @@
     depositYenEl.addEventListener("blur", saveSettings);
     kyosaiYenEl.addEventListener("blur", saveSettings);
     goalYenEl.addEventListener("blur", saveSettings);
+
+    addCustomAssetBtn.addEventListener("click", () => {
+      const name = customAssetNameEl.value.trim().slice(0, 24);
+      const amount = safeNumber(customAssetAmountEl.value);
+      if (!name) {
+        setStatus("カスタム資産名を入力してください。", true);
+        return;
+      }
+      const settings = loadSettings();
+      const nextCustomAssets = [
+        ...settings.customAssets,
+        { id: `custom-${Date.now()}`, name, amount }
+      ];
+      saveSettings(nextCustomAssets);
+      customAssetNameEl.value = "";
+      customAssetAmountEl.value = "";
+      renderCustomAssets(nextCustomAssets);
+      fetchAndRender();
+    });
+
+    customAssetListEl.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-remove-custom]");
+      if (!button) return;
+      const id = button.getAttribute("data-remove-custom");
+      const settings = loadSettings();
+      const nextCustomAssets = settings.customAssets.filter((asset) => asset.id !== id);
+      saveSettings(nextCustomAssets);
+      renderCustomAssets(nextCustomAssets);
+      fetchAndRender();
+    });
 
     svgInputEl.addEventListener("change", () => {
       const file = svgInputEl.files && svgInputEl.files[0];
@@ -797,7 +954,7 @@
     window.addEventListener("resize", () => drawAssetPie(lastPieValues));
 
     loadSvg();
-    drawAssetPie({ btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0 });
+    drawAssetPie({ btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0, custom: [] });
     fetchAndRender();
     setInterval(fetchAndRender, 5 * 60 * 1000);
 
