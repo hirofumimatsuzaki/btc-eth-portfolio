@@ -125,6 +125,10 @@
       background: #fbfdff;
     }
 
+    .stat-group {
+      display: contents;
+    }
+
     .stat-title {
       color: var(--muted);
       font-size: 0.85rem;
@@ -448,6 +452,7 @@
           <p class="stat-title">小規模企業共済 (円)</p>
           <p id="kyosaiValue" class="stat-value">-</p>
         </article>
+        <div id="customAssetStats" class="stat-group"></div>
         <article class="stat">
           <p class="stat-title">総資産評価額 (円)</p>
           <p id="totalValue" class="stat-value">-</p>
@@ -503,6 +508,7 @@
     const assetPieEl = document.getElementById("assetPie");
     const assetLegendEl = document.getElementById("assetLegend");
     const customAssetListEl = document.getElementById("customAssetList");
+    const customAssetStatsEl = document.getElementById("customAssetStats");
     const svgInputEl = document.getElementById("svgInput");
     const clearSvgBtn = document.getElementById("clearSvgBtn");
     const svgPreviewEl = document.getElementById("svgPreview");
@@ -597,6 +603,19 @@
           <button class="ghost-btn" type="button" data-remove-custom="${asset.id}">削除</button>
         `;
         customAssetListEl.appendChild(li);
+      });
+    }
+
+    function renderCustomAssetStats(customAssets) {
+      customAssetStatsEl.innerHTML = "";
+      customAssets.forEach((asset) => {
+        const article = document.createElement("article");
+        article.className = "stat";
+        article.innerHTML = `
+          <p class="stat-title">${asset.name} (円)</p>
+          <p class="stat-value">${formatYen(asset.amount)}</p>
+        `;
+        customAssetStatsEl.appendChild(article);
       });
     }
 
@@ -793,6 +812,7 @@
       kyosaiYenEl.value = settings.kyosai || "";
       goalYenEl.value = settings.goal || "";
       renderCustomAssets(settings.customAssets);
+      renderCustomAssetStats(settings.customAssets);
 
       setStatus("価格を取得しています...", false);
 
@@ -907,6 +927,7 @@
       customAssetNameEl.value = "";
       customAssetAmountEl.value = "";
       renderCustomAssets(nextCustomAssets);
+      renderCustomAssetStats(nextCustomAssets);
       fetchAndRender();
     });
 
@@ -918,6 +939,7 @@
       const nextCustomAssets = settings.customAssets.filter((asset) => asset.id !== id);
       saveSettings(nextCustomAssets);
       renderCustomAssets(nextCustomAssets);
+      renderCustomAssetStats(nextCustomAssets);
       fetchAndRender();
     });
 
