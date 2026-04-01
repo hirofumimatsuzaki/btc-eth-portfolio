@@ -184,6 +184,28 @@
       font-size: 0.9rem;
     }
 
+    .trend-wrap {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fbfdff;
+      padding: 12px;
+    }
+
+    .trend-canvas {
+      width: 100%;
+      height: 260px;
+      border-radius: 10px;
+      background: #fff;
+      display: block;
+    }
+
+    .trend-note {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
     .chart-wrap {
       display: grid;
       gap: 12px;
@@ -391,6 +413,10 @@
           <p id="monthlyChange" class="stat-value">-</p>
         </article>
       </div>
+      <div class="trend-wrap">
+        <canvas id="yearTrendChart" class="trend-canvas" aria-label="一年分の資産推移グラフ"></canvas>
+        <p class="trend-note">月次スナップショットを元に、直近12か月の総資産推移を表示します。</p>
+      </div>
     </section>
 
     <section class="card">
@@ -504,6 +530,7 @@
     const goalFillEl = document.getElementById("goalFill");
     const thisMonthSnapshotEl = document.getElementById("thisMonthSnapshot");
     const monthlyChangeEl = document.getElementById("monthlyChange");
+    const yearTrendChartEl = document.getElementById("yearTrendChart");
     const statusEl = document.getElementById("status");
     const assetPieEl = document.getElementById("assetPie");
     const assetLegendEl = document.getElementById("assetLegend");
@@ -516,6 +543,7 @@
     const saveBtn = document.getElementById("saveBtn");
     const refreshBtn = document.getElementById("refreshBtn");
     let lastPieValues = { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0, custom: [] };
+    let lastTrendValues = [];
 
     function safeNumber(value) {
       const n = Number(value);
@@ -658,6 +686,15 @@
       return monthId(d);
     }
 
+    function last12MonthKeys(baseDate = new Date()) {
+      const keys = [];
+      for (let offset = 11; offset >= 0; offset -= 1) {
+        const d = new Date(baseDate.getFullYear(), baseDate.getMonth() - offset, 1);
+        keys.push(monthId(d));
+      }
+      return keys;
+    }
+
     function loadSnapshots() {
       try {
         const raw = JSON.parse(localStorage.getItem(SNAPSHOT_KEY) || "{}");
@@ -704,6 +741,124 @@
       const diffPct = (diff / prevTotal) * 100;
       const sign = diff >= 0 ? "+" : "";
       monthlyChangeEl.textContent = `${sign}${formatYen(diff)} (${sign}${diffPct.toFixed(1)}%)`;
+    }
+
+    function formatCompactYen(value) {
+      if (value >= 100000000) return `${(value / 100000000).toFixed(1)}億円`;
+      if (value >= 10000) return `${(value / 10000).toFixed(0)}万円`;
+      return `${Math.round(value).toLocaleString("ja-JP")}円`;
+    }
+
+    function buildTrendSeries() {
+      const snapshots = loadSnapshots();
+      const keys = last12MonthKeys();
+      return keys.map((key) => ({
+        key,
+        label: key.slice(5).replace("-", "/"),
+        value: safeNumber(snapshots[key])
+      }));
+    }
+
+    function drawYearTrendChart(series) {
+      lastTrendValues = series;
+      const rect = yearTrendChartEl.getBoundingClientRect();
+      const width = Math.max(320, Math.floor(rect.width || 640));
+      const height = 260;
+      const ratio = window.devicePixelRatio || 1;
+      yearTrendChartEl.width = Math.floor(width * ratio);
+      yearTrendChartEl.height = Math.floor(height * ratio);
+
+      const ctx = yearTrendChartEl.getContext("2d");
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.clearRect(0, 0, width, height);
+
+      const left = 52;
+      const right = 14;
+      const top = 14;
+      const bottom = 34;
+      const plotW = width - left - right;
+      const plotH = height - top - bottom;
+
+      const values = series.map((item) => item.value).filter((value) => value > 0);
+      if (!values.length) {
+        ctx.fillStyle = "#9aa8b7";
+        ctx.font = '14px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif';
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("月次データがまだありません", width / 2, height / 2);
+        return;
+      }
+
+      const maxValue = Math.max(...values);
+      const minValue = Math.min(...values);
+      const range = Math.max(1, maxValue - minValue);
+      const pad = range * 0.18;
+      const yMax = maxValue + pad;
+      const yMin = Math.max(0, minValue - pad);
+      const yRange = Math.max(1, yMax - yMin);
+
+      ctx.strokeStyle = "#e2e8f0";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let i = 0; i < 4; i += 1) {
+        const y = top + (plotH / 3) * i;
+        ctx.moveTo(left, y);
+        ctx.lineTo(width - right, y);
+      }
+      ctx.stroke();
+
+      ctx.fillStyle = "#5e6b7a";
+      ctx.font = '11px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif';
+      ctx.textAlign = "right";
+      ctx.textBaseline = "middle";
+      for (let i = 0; i < 4; i += 1) {
+        const ratioY = i / 3;
+        const y = top + plotH * ratioY;
+        const value = yMax - yRange * ratioY;
+        ctx.fillText(formatCompactYen(value), left - 8, y);
+      }
+
+      const points = series.map((item, index) => {
+        const x = left + (plotW / Math.max(1, series.length - 1)) * index;
+        const value = item.value;
+        const y = value > 0 ? top + ((yMax - value) / yRange) * plotH : null;
+        return { ...item, x, y };
+      });
+
+      ctx.strokeStyle = "#0b6bcb";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      let started = false;
+      points.forEach((point) => {
+        if (point.y === null) return;
+        if (!started) {
+          ctx.moveTo(point.x, point.y);
+          started = true;
+        } else {
+          ctx.lineTo(point.x, point.y);
+        }
+      });
+      ctx.stroke();
+
+      points.forEach((point) => {
+        if (point.y === null) return;
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = "#0e9f6e";
+        ctx.fill();
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      });
+
+      ctx.fillStyle = "#5e6b7a";
+      ctx.font = '11px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif';
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      points.forEach((point, index) => {
+        if (index % 2 !== 0 && index !== points.length - 1) return;
+        ctx.fillText(point.label, point.x, height - bottom + 10);
+      });
     }
 
     function drawAssetPie(values) {
@@ -860,6 +1015,7 @@
         totalValueEl.textContent = formatYen(totalJpy);
         renderGoalProgress(totalJpy, settings.goal);
         renderMonthlySnapshot(totalJpy);
+        drawYearTrendChart(buildTrendSeries());
         drawAssetPie({
           btc: btcValueJpy,
           eth: ethValueJpy,
@@ -891,6 +1047,7 @@
         totalValueEl.textContent = formatYen(fallbackTotal);
         renderGoalProgress(fallbackTotal, settings.goal);
         renderMonthlySnapshot(fallbackTotal);
+        drawYearTrendChart(buildTrendSeries());
         drawAssetPie({ btc: 0, eth: 0, usdt: 0, usdc: 0, fund: fundOnly, deposit: depositOnly, kyosai: kyosaiOnly, custom: settings.customAssets });
       }
     }
@@ -973,10 +1130,14 @@
       setStatus("SVGを削除しました。", false);
     });
 
-    window.addEventListener("resize", () => drawAssetPie(lastPieValues));
+    window.addEventListener("resize", () => {
+      drawAssetPie(lastPieValues);
+      drawYearTrendChart(lastTrendValues);
+    });
 
     loadSvg();
     drawAssetPie({ btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0, custom: [] });
+    drawYearTrendChart(buildTrendSeries());
     fetchAndRender();
     setInterval(fetchAndRender, 5 * 60 * 1000);
 
