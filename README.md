@@ -13,8 +13,9 @@
 
 ## 計算ルール
 
-- BTC/ETH: CoinGecko の円価格を使用
-- USDT/USDC: CoinGecko のUSD価格を取得し、当日のUSD/JPY（Frankfurter API）で円換算
+- BTC/ETH/USDT/USDC/USDJPY: Coinbase Exchange Rates API の公開レートを使用
+- BTC/ETH は USD レートと USD/JPY から円換算
+- USDT/USDC は USD レートを取得し、USD/JPY から円換算
 - 投資信託/預金/小規模企業共済: 円で手入力した値をそのまま合算
 - 任意のカスタム資産: 名前と円金額を追加して合算
 - 保有数量はブラウザの`localStorage`に保存

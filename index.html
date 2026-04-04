@@ -587,8 +587,7 @@
     const CASHFLOW_KEY = "portfolio_cashflow_history_v1";
     const PRICE_CACHE_KEY = "portfolio_last_price_cache_v1";
     const SVG_KEY = "portfolio_custom_svg_v1";
-    const PRICE_URL = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,tether,usd-coin&vs_currencies=jpy,usd";
-    const FX_URL = "https://api.frankfurter.app/latest?from=USD&to=JPY";
+    const PRICE_URL = "https://api.coinbase.com/v2/exchange-rates?currency=USD";
 
     const btcAmountEl = document.getElementById("btcAmount");
     const ethAmountEl = document.getElementById("ethAmount");
@@ -878,17 +877,26 @@
 
     async function loadLatestPrices() {
       const cached = loadPriceCache();
-      const [priceResult, fxResult] = await Promise.allSettled([
-        fetchJsonWithRetry(PRICE_URL),
-        fetchJsonWithRetry(FX_URL)
-      ]);
+      let response = null;
+      try {
+        response = await fetchJsonWithRetry(PRICE_URL);
+      } catch {
+        response = null;
+      }
+
+      const rates = response?.data?.rates || {};
+      const usdToJpy = safeNumber(rates.JPY);
+      const usdToBtc = safeNumber(rates.BTC);
+      const usdToEth = safeNumber(rates.ETH);
+      const usdToUsdt = safeNumber(rates.USDT);
+      const usdToUsdc = safeNumber(rates.USDC);
 
       const fresh = {
-        btcPriceJpy: priceResult.status === "fulfilled" ? safeNumber(priceResult.value?.bitcoin?.jpy) : 0,
-        ethPriceJpy: priceResult.status === "fulfilled" ? safeNumber(priceResult.value?.ethereum?.jpy) : 0,
-        usdtPriceUsd: priceResult.status === "fulfilled" ? safeNumber(priceResult.value?.tether?.usd) : 0,
-        usdcPriceUsd: priceResult.status === "fulfilled" ? safeNumber(priceResult.value?.["usd-coin"]?.usd) : 0,
-        usdJpy: fxResult.status === "fulfilled" ? safeNumber(fxResult.value?.rates?.JPY) : 0
+        btcPriceJpy: usdToBtc && usdToJpy ? (1 / usdToBtc) * usdToJpy : 0,
+        ethPriceJpy: usdToEth && usdToJpy ? (1 / usdToEth) * usdToJpy : 0,
+        usdtPriceUsd: usdToUsdt ? 1 / usdToUsdt : 0,
+        usdcPriceUsd: usdToUsdc ? 1 / usdToUsdc : 0,
+        usdJpy: usdToJpy
       };
 
       const merged = {
@@ -909,6 +917,7 @@
       }
 
       const usedCache = Boolean(
+        !response ||
         (!fresh.btcPriceJpy && cached?.btcPriceJpy) ||
         (!fresh.ethPriceJpy && cached?.ethPriceJpy) ||
         (!fresh.usdtPriceUsd && cached?.usdtPriceUsd) ||
