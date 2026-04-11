@@ -477,7 +477,9 @@
           <input id="customAssetAmount" type="number" step="1" min="0" placeholder="例: 250000" />
         </label>
         <button id="addCustomAssetBtn" class="ghost-btn" type="button">資産を追加</button>
+        <button id="cancelCustomAssetEditBtn" class="ghost-btn" type="button" hidden>編集をキャンセル</button>
       </div>
+      <p id="customAssetMode" class="trend-note">新しい資産を追加できます。</p>
       <ul id="customAssetList" class="custom-asset-list"></ul>
     </section>
 
@@ -599,6 +601,7 @@
     const goalYenEl = document.getElementById("goalYen");
     const customAssetNameEl = document.getElementById("customAssetName");
     const customAssetAmountEl = document.getElementById("customAssetAmount");
+    const customAssetModeEl = document.getElementById("customAssetMode");
     const cashflowDateEl = document.getElementById("cashflowDate");
     const cashflowAssetEl = document.getElementById("cashflowAsset");
     const cashflowAmountEl = document.getElementById("cashflowAmount");
@@ -633,11 +636,13 @@
     const clearSvgBtn = document.getElementById("clearSvgBtn");
     const svgPreviewEl = document.getElementById("svgPreview");
     const addCustomAssetBtn = document.getElementById("addCustomAssetBtn");
+    const cancelCustomAssetEditBtn = document.getElementById("cancelCustomAssetEditBtn");
     const addCashflowBtn = document.getElementById("addCashflowBtn");
     const saveBtn = document.getElementById("saveBtn");
     const refreshBtn = document.getElementById("refreshBtn");
     let lastPieValues = { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0, custom: [] };
     let lastTrendValues = [];
+    let editingCustomAssetId = null;
 
     function safeNumber(value) {
       const n = Number(value);
@@ -736,10 +741,30 @@
             <div class="custom-asset-name">${asset.name}</div>
             <div class="custom-asset-amount">${formatYen(asset.amount)}</div>
           </div>
+          <button class="ghost-btn" type="button" data-edit-custom="${asset.id}">編集</button>
           <button class="ghost-btn" type="button" data-remove-custom="${asset.id}">削除</button>
         `;
         customAssetListEl.appendChild(li);
       });
+    }
+
+    function resetCustomAssetEditor() {
+      editingCustomAssetId = null;
+      customAssetNameEl.value = "";
+      customAssetAmountEl.value = "";
+      customAssetModeEl.textContent = "新しい資産を追加できます。";
+      addCustomAssetBtn.textContent = "資産を追加";
+      cancelCustomAssetEditBtn.hidden = true;
+    }
+
+    function startCustomAssetEdit(asset) {
+      editingCustomAssetId = asset.id;
+      customAssetNameEl.value = asset.name;
+      customAssetAmountEl.value = asset.amount || "";
+      customAssetModeEl.textContent = `「${asset.name}」を編集中です。`;
+      addCustomAssetBtn.textContent = "変更を保存";
+      cancelCustomAssetEditBtn.hidden = false;
+      customAssetAmountEl.focus();
     }
 
     function renderCustomAssetStats(customAssets) {
@@ -1349,17 +1374,24 @@
         return;
       }
       const settings = loadSettings();
-      const nextCustomAssets = [
-        ...settings.customAssets,
-        { id: `custom-${Date.now()}`, name, amount }
-      ];
+      const nextCustomAssets = editingCustomAssetId
+        ? settings.customAssets.map((asset) => (
+            asset.id === editingCustomAssetId
+              ? { ...asset, name, amount }
+              : asset
+          ))
+        : [
+            ...settings.customAssets,
+            { id: `custom-${Date.now()}`, name, amount }
+          ];
       saveSettings(nextCustomAssets);
-      customAssetNameEl.value = "";
-      customAssetAmountEl.value = "";
+      resetCustomAssetEditor();
       renderCustomAssets(nextCustomAssets);
       renderCustomAssetStats(nextCustomAssets);
       fetchAndRender();
     });
+
+    cancelCustomAssetEditBtn.addEventListener("click", resetCustomAssetEditor);
 
     addCashflowBtn.addEventListener("click", () => {
       const date = cashflowDateEl.value || new Date().toISOString().slice(0, 10);
@@ -1382,11 +1414,23 @@
     });
 
     customAssetListEl.addEventListener("click", (event) => {
+      const editButton = event.target.closest("[data-edit-custom]");
+      if (editButton) {
+        const id = editButton.getAttribute("data-edit-custom");
+        const asset = loadSettings().customAssets.find((item) => item.id === id);
+        if (asset) {
+          startCustomAssetEdit(asset);
+        }
+        return;
+      }
       const button = event.target.closest("[data-remove-custom]");
       if (!button) return;
       const id = button.getAttribute("data-remove-custom");
       const settings = loadSettings();
       const nextCustomAssets = settings.customAssets.filter((asset) => asset.id !== id);
+      if (editingCustomAssetId === id) {
+        resetCustomAssetEditor();
+      }
       saveSettings(nextCustomAssets);
       renderCustomAssets(nextCustomAssets);
       renderCustomAssetStats(nextCustomAssets);
