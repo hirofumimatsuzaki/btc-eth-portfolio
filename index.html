@@ -380,6 +380,28 @@
         grid-template-columns: 1fr;
       }
     }
+
+    .collapsible {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fbfdff;
+    }
+
+    .collapsible summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 14px 16px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .collapsible summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .collapsible-body {
+      padding: 0 16px 16px;
+    }
   </style>
 </head>
 <body>
@@ -484,50 +506,58 @@
     </section>
 
     <section class="card">
-      <p class="sub">入金履歴</p>
-      <div class="cashflow-form">
-        <label>
-          日付
-          <input id="cashflowDate" type="date" />
-        </label>
-        <label>
-          入金先
-          <input id="cashflowAsset" type="text" maxlength="24" placeholder="例: BTC / 投資信託 / 預金" />
-        </label>
-        <label>
-          金額 (円)
-          <input id="cashflowAmount" type="number" step="1" min="0" placeholder="例: 100000" />
-        </label>
-        <label>
-          メモ
-          <input id="cashflowNote" type="text" maxlength="40" placeholder="例: 4月積立" />
-        </label>
-        <button id="addCashflowBtn" class="ghost-btn" type="button">入金を記録</button>
-      </div>
-      <div class="stats" style="margin-top:12px;">
-        <article class="stat">
-          <p class="stat-title">入金累計</p>
-          <p id="cashflowTotal" class="stat-value">-</p>
-        </article>
-        <article class="stat">
-          <p class="stat-title">今月入金</p>
-          <p id="cashflowMonthTotal" class="stat-value">-</p>
-        </article>
-        <article class="stat">
-          <p class="stat-title">評価額との差額</p>
-          <p id="cashflowDiff" class="stat-value">-</p>
-        </article>
-      </div>
-      <ul id="cashflowList" class="cashflow-list"></ul>
+      <details class="collapsible">
+        <summary>入金履歴</summary>
+        <div class="collapsible-body">
+          <div class="cashflow-form">
+            <label>
+              日付
+              <input id="cashflowDate" type="date" />
+            </label>
+            <label>
+              入金先
+              <input id="cashflowAsset" type="text" maxlength="24" placeholder="例: BTC / 投資信託 / 預金" />
+            </label>
+            <label>
+              金額 (円)
+              <input id="cashflowAmount" type="number" step="1" min="0" placeholder="例: 100000" />
+            </label>
+            <label>
+              メモ
+              <input id="cashflowNote" type="text" maxlength="40" placeholder="例: 4月積立" />
+            </label>
+            <button id="addCashflowBtn" class="ghost-btn" type="button">入金を記録</button>
+          </div>
+          <div class="stats" style="margin-top:12px;">
+            <article class="stat">
+              <p class="stat-title">入金累計</p>
+              <p id="cashflowTotal" class="stat-value">-</p>
+            </article>
+            <article class="stat">
+              <p class="stat-title">今月入金</p>
+              <p id="cashflowMonthTotal" class="stat-value">-</p>
+            </article>
+            <article class="stat">
+              <p class="stat-title">評価額との差額</p>
+              <p id="cashflowDiff" class="stat-value">-</p>
+            </article>
+          </div>
+          <ul id="cashflowList" class="cashflow-list"></ul>
+        </div>
+      </details>
     </section>
 
     <section class="card">
-      <p class="sub">SVG読み込み（ロゴなど）</p>
-      <div class="svg-tools">
-        <input id="svgInput" type="file" accept=".svg,image/svg+xml" />
-        <button id="clearSvgBtn" type="button">SVGを削除</button>
-      </div>
-      <div id="svgPreview" class="svg-preview">SVGはまだ読み込まれていません</div>
+      <details class="collapsible">
+        <summary>SVG読み込み（ロゴなど）</summary>
+        <div class="collapsible-body">
+          <div class="svg-tools">
+            <input id="svgInput" type="file" accept=".svg,image/svg+xml" />
+            <button id="clearSvgBtn" type="button">SVGを削除</button>
+          </div>
+          <div id="svgPreview" class="svg-preview">SVGはまだ読み込まれていません</div>
+        </div>
+      </details>
     </section>
 
     <section class="card">
