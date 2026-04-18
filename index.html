@@ -498,6 +498,10 @@
           <input id="goalKyosaiYen" type="number" step="1" min="0" placeholder="例: 1500000" />
         </label>
         <label>
+          不動産目標 (円)
+          <input id="goalRealEstateYen" type="number" step="1" min="0" placeholder="例: 20000000" />
+        </label>
+        <label>
           その他目標 (円)
           <input id="goalOtherYen" type="number" step="1" min="0" placeholder="例: 500000" />
         </label>
@@ -563,6 +567,7 @@
             <option value="investment">投資信託</option>
             <option value="crypto">暗号資産</option>
             <option value="kyosai">共済</option>
+            <option value="real_estate">不動産</option>
             <option value="other" selected>その他</option>
           </select>
         </label>
@@ -693,6 +698,7 @@
       { key: "investment", label: "投資信託" },
       { key: "crypto", label: "暗号資産" },
       { key: "kyosai", label: "共済" },
+      { key: "real_estate", label: "不動産" },
       { key: "other", label: "その他" }
     ];
 
@@ -708,6 +714,7 @@
     const goalInvestmentYenEl = document.getElementById("goalInvestmentYen");
     const goalCryptoYenEl = document.getElementById("goalCryptoYen");
     const goalKyosaiYenEl = document.getElementById("goalKyosaiYen");
+    const goalRealEstateYenEl = document.getElementById("goalRealEstateYen");
     const goalOtherYenEl = document.getElementById("goalOtherYen");
     const customAssetNameEl = document.getElementById("customAssetName");
     const customAssetAmountEl = document.getElementById("customAssetAmount");
@@ -762,7 +769,7 @@
     }
 
     function defaultCategoryGoals() {
-      return { cash: 0, investment: 0, crypto: 0, kyosai: 0, other: 0 };
+      return { cash: 0, investment: 0, crypto: 0, kyosai: 0, real_estate: 0, other: 0 };
     }
 
     function normalizeCategory(value) {
@@ -778,6 +785,7 @@
         investment: safeNumber(value.investment),
         crypto: safeNumber(value.crypto),
         kyosai: safeNumber(value.kyosai),
+        real_estate: safeNumber(value.real_estate),
         other: safeNumber(value.other)
       };
     }
@@ -860,6 +868,7 @@
           investment: goalInvestmentYenEl.value,
           crypto: goalCryptoYenEl.value,
           kyosai: goalKyosaiYenEl.value,
+          real_estate: goalRealEstateYenEl.value,
           other: goalOtherYenEl.value
         }),
         customAssets: normalizeCustomAssets(customAssets)
@@ -1185,6 +1194,7 @@
         investment: safeNumber(values.fund),
         crypto: safeNumber(values.btc) + safeNumber(values.eth) + safeNumber(values.usdt) + safeNumber(values.usdc),
         kyosai: safeNumber(values.kyosai),
+        real_estate: 0,
         other: 0
       };
       normalizeCustomAssets(values.custom).forEach((asset) => {
@@ -1457,6 +1467,7 @@
       goalInvestmentYenEl.value = settings.categoryGoals.investment || "";
       goalCryptoYenEl.value = settings.categoryGoals.crypto || "";
       goalKyosaiYenEl.value = settings.categoryGoals.kyosai || "";
+      goalRealEstateYenEl.value = settings.categoryGoals.real_estate || "";
       goalOtherYenEl.value = settings.categoryGoals.other || "";
       cashflowDateEl.value = cashflowDateEl.value || new Date().toISOString().slice(0, 10);
       renderCustomAssets(settings.customAssets);
@@ -1578,6 +1589,7 @@
     goalInvestmentYenEl.addEventListener("blur", saveSettings);
     goalCryptoYenEl.addEventListener("blur", saveSettings);
     goalKyosaiYenEl.addEventListener("blur", saveSettings);
+    goalRealEstateYenEl.addEventListener("blur", saveSettings);
     goalOtherYenEl.addEventListener("blur", saveSettings);
 
     addCustomAssetBtn.addEventListener("click", () => {
