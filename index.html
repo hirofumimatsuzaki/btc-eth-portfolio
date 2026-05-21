@@ -144,6 +144,10 @@
       letter-spacing: 0.01em;
     }
 
+    .stat-value.positive {
+      color: var(--accent-2);
+    }
+
     .status {
       margin: 8px 0 0;
       color: var(--muted);
@@ -505,6 +509,10 @@
           その他目標 (円)
           <input id="goalOtherYen" type="number" step="1" min="0" placeholder="例: 500000" />
         </label>
+        <label>
+          月間入金目標 (円)
+          <input id="monthlyDepositGoalYen" type="number" step="1" min="0" placeholder="例: 150000" />
+        </label>
       </div>
 
       <div class="actions">
@@ -543,6 +551,26 @@
       </div>
       <div id="categoryGoalStats" class="stats" style="margin-top:12px;"></div>
       <p class="trend-note">カテゴリ別目標は、固定資産は自動分類し、追加資産は選択したカテゴリへ集計します。</p>
+      <div class="goal-wrap" style="margin-top:12px;">
+        <p id="monthlyDepositGoalMeta" class="goal-meta">月間入金目標を入力すると今月の進捗を表示します</p>
+        <div class="goal-track">
+          <div id="monthlyDepositGoalFill" class="goal-fill"></div>
+        </div>
+      </div>
+      <div class="stats" style="margin-top:12px;">
+        <article class="stat">
+          <p class="stat-title">月間入金目標 (円)</p>
+          <p id="monthlyDepositGoalTarget" class="stat-value">-</p>
+        </article>
+        <article class="stat">
+          <p class="stat-title">今月入金達成率</p>
+          <p id="monthlyDepositGoalPercent" class="stat-value">-</p>
+        </article>
+        <article class="stat">
+          <p class="stat-title">目標まであと</p>
+          <p id="monthlyDepositGoalRemaining" class="stat-value">-</p>
+        </article>
+      </div>
       <div class="trend-wrap">
         <canvas id="yearTrendChart" class="trend-canvas" aria-label="一年分の資産推移グラフ"></canvas>
         <p class="trend-note">月次スナップショットを元に、直近12か月の総資産推移を表示します。</p>
@@ -716,6 +744,7 @@
     const goalKyosaiYenEl = document.getElementById("goalKyosaiYen");
     const goalRealEstateYenEl = document.getElementById("goalRealEstateYen");
     const goalOtherYenEl = document.getElementById("goalOtherYen");
+    const monthlyDepositGoalYenEl = document.getElementById("monthlyDepositGoalYen");
     const customAssetNameEl = document.getElementById("customAssetName");
     const customAssetAmountEl = document.getElementById("customAssetAmount");
     const customAssetCategoryEl = document.getElementById("customAssetCategory");
@@ -738,6 +767,11 @@
     const goalPercentEl = document.getElementById("goalPercent");
     const goalMetaEl = document.getElementById("goalMeta");
     const goalFillEl = document.getElementById("goalFill");
+    const monthlyDepositGoalMetaEl = document.getElementById("monthlyDepositGoalMeta");
+    const monthlyDepositGoalFillEl = document.getElementById("monthlyDepositGoalFill");
+    const monthlyDepositGoalTargetEl = document.getElementById("monthlyDepositGoalTarget");
+    const monthlyDepositGoalPercentEl = document.getElementById("monthlyDepositGoalPercent");
+    const monthlyDepositGoalRemainingEl = document.getElementById("monthlyDepositGoalRemaining");
     const categoryGoalStatsEl = document.getElementById("categoryGoalStats");
     const thisMonthSnapshotEl = document.getElementById("thisMonthSnapshot");
     const monthlyChangeEl = document.getElementById("monthlyChange");
@@ -832,7 +866,7 @@
         const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
         const data = JSON.parse(latest || previous || legacy || "null");
         if (!data || typeof data !== "object") {
-          return { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0, goal: 0, categoryGoals: defaultCategoryGoals(), customAssets: [] };
+          return { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0, goal: 0, monthlyDepositGoal: 0, categoryGoals: defaultCategoryGoals(), customAssets: [] };
         }
         return {
           btc: safeNumber(data.btc),
@@ -843,11 +877,12 @@
           deposit: safeNumber(data.deposit),
           kyosai: safeNumber(data.kyosai),
           goal: safeNumber(data.goal),
+          monthlyDepositGoal: safeNumber(data.monthlyDepositGoal),
           categoryGoals: normalizeCategoryGoals(data.categoryGoals),
           customAssets: normalizeCustomAssets(data.customAssets)
         };
       } catch {
-        return { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0, goal: 0, categoryGoals: defaultCategoryGoals(), customAssets: [] };
+        return { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0, goal: 0, monthlyDepositGoal: 0, categoryGoals: defaultCategoryGoals(), customAssets: [] };
       }
     }
 
@@ -863,6 +898,7 @@
         deposit: safeNumber(depositYenEl.value),
         kyosai: safeNumber(kyosaiYenEl.value),
         goal: safeNumber(goalYenEl.value),
+        monthlyDepositGoal: safeNumber(monthlyDepositGoalYenEl.value),
         categoryGoals: normalizeCategoryGoals({
           cash: goalCashYenEl.value,
           investment: goalInvestmentYenEl.value,
@@ -1158,11 +1194,7 @@
         });
       }
 
-      const totalDeposits = cashflows.reduce((sum, item) => sum + item.amount, 0);
-      const currentMonth = monthId(new Date());
-      const monthDeposits = cashflows
-        .filter((item) => item.date.slice(0, 7) === currentMonth)
-        .reduce((sum, item) => sum + item.amount, 0);
+      const { totalDeposits, monthDeposits } = getCashflowSummary(cashflows);
       const diff = totalJpy - totalDeposits;
       const sign = diff >= 0 ? "+" : "";
 
@@ -1171,6 +1203,15 @@
       cashflowDiffEl.textContent = `${sign}${formatYen(diff)}`;
       cashflowDiffEl.classList.toggle("positive", diff >= 0);
       cashflowDiffEl.classList.toggle("negative", diff < 0);
+    }
+
+    function getCashflowSummary(cashflows = loadCashflows()) {
+      const totalDeposits = cashflows.reduce((sum, item) => sum + item.amount, 0);
+      const currentMonth = monthId(new Date());
+      const monthDeposits = cashflows
+        .filter((item) => item.date.slice(0, 7) === currentMonth)
+        .reduce((sum, item) => sum + item.amount, 0);
+      return { totalDeposits, monthDeposits };
     }
 
     function renderGoalProgress(totalJpy, goalYen) {
@@ -1186,6 +1227,26 @@
       goalPercentEl.textContent = `${percent.toFixed(1)}%`;
       goalMetaEl.textContent = `${formatYen(totalJpy)} / ${formatYen(goalYen)}`;
       goalFillEl.style.width = `${Math.max(0, Math.min(percent, 100))}%`;
+    }
+
+    function renderMonthlyDepositGoal(monthDeposits, monthlyDepositGoal) {
+      monthlyDepositGoalTargetEl.textContent = monthlyDepositGoal > 0 ? formatYen(monthlyDepositGoal) : "-";
+      if (monthlyDepositGoal <= 0) {
+        monthlyDepositGoalPercentEl.textContent = "-";
+        monthlyDepositGoalRemainingEl.textContent = "-";
+        monthlyDepositGoalMetaEl.textContent = "月間入金目標を入力すると今月の進捗を表示します";
+        monthlyDepositGoalFillEl.style.width = "0%";
+        monthlyDepositGoalRemainingEl.classList.remove("positive");
+        return;
+      }
+      const ratio = monthDeposits / monthlyDepositGoal;
+      const percent = ratio * 100;
+      const remaining = Math.max(0, monthlyDepositGoal - monthDeposits);
+      monthlyDepositGoalPercentEl.textContent = `${percent.toFixed(1)}%`;
+      monthlyDepositGoalRemainingEl.textContent = remaining > 0 ? formatYen(remaining) : "達成";
+      monthlyDepositGoalMetaEl.textContent = `${formatYen(monthDeposits)} / ${formatYen(monthlyDepositGoal)}`;
+      monthlyDepositGoalFillEl.style.width = `${Math.max(0, Math.min(percent, 100))}%`;
+      monthlyDepositGoalRemainingEl.classList.toggle("positive", remaining === 0);
     }
 
     function buildCategoryTotals(values) {
@@ -1469,9 +1530,11 @@
       goalKyosaiYenEl.value = settings.categoryGoals.kyosai || "";
       goalRealEstateYenEl.value = settings.categoryGoals.real_estate || "";
       goalOtherYenEl.value = settings.categoryGoals.other || "";
+      monthlyDepositGoalYenEl.value = settings.monthlyDepositGoal || "";
       cashflowDateEl.value = cashflowDateEl.value || new Date().toISOString().slice(0, 10);
       renderCustomAssets(settings.customAssets);
       renderCustomAssetStats(settings.customAssets);
+      const { monthDeposits } = getCashflowSummary();
 
       setStatus("価格を取得しています...", false);
 
@@ -1506,6 +1569,7 @@
         kyosaiValueEl.textContent = formatYen(kyosaiValueJpy);
         totalValueEl.textContent = formatYen(totalJpy);
         renderGoalProgress(totalJpy, settings.goal);
+        renderMonthlyDepositGoal(monthDeposits, settings.monthlyDepositGoal);
         renderCategoryGoalProgress(buildCategoryTotals({
           btc: btcValueJpy,
           eth: ethValueJpy,
@@ -1553,6 +1617,7 @@
         const fallbackTotal = fundOnly + depositOnly + kyosaiOnly + customOnly;
         totalValueEl.textContent = formatYen(fallbackTotal);
         renderGoalProgress(fallbackTotal, settings.goal);
+        renderMonthlyDepositGoal(monthDeposits, settings.monthlyDepositGoal);
         renderCategoryGoalProgress(buildCategoryTotals({
           btc: 0,
           eth: 0,
@@ -1591,6 +1656,7 @@
     goalKyosaiYenEl.addEventListener("blur", saveSettings);
     goalRealEstateYenEl.addEventListener("blur", saveSettings);
     goalOtherYenEl.addEventListener("blur", saveSettings);
+    monthlyDepositGoalYenEl.addEventListener("blur", saveSettings);
 
     addCustomAssetBtn.addEventListener("click", () => {
       const name = customAssetNameEl.value.trim().slice(0, 24);
