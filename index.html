@@ -571,6 +571,21 @@
           <p id="monthlyDepositGoalRemaining" class="stat-value">-</p>
         </article>
       </div>
+      <div class="stats" style="margin-top:12px;">
+        <article class="stat">
+          <p class="stat-title">年末予測総資産</p>
+          <p id="yearEndForecastTotal" class="stat-value">-</p>
+        </article>
+        <article class="stat">
+          <p class="stat-title">年末までの想定追加入金</p>
+          <p id="yearEndForecastDeposits" class="stat-value">-</p>
+        </article>
+        <article class="stat">
+          <p class="stat-title">目標との差</p>
+          <p id="yearEndForecastGap" class="stat-value">-</p>
+        </article>
+      </div>
+      <p id="yearEndForecastMeta" class="trend-note">今年の入金ペースから、年末時点の総資産を予測します。</p>
       <div class="trend-wrap">
         <canvas id="yearTrendChart" class="trend-canvas" aria-label="一年分の資産推移グラフ"></canvas>
         <p class="trend-note">月次スナップショットを元に、直近12か月の総資産推移を表示します。</p>
@@ -772,6 +787,10 @@
     const monthlyDepositGoalTargetEl = document.getElementById("monthlyDepositGoalTarget");
     const monthlyDepositGoalPercentEl = document.getElementById("monthlyDepositGoalPercent");
     const monthlyDepositGoalRemainingEl = document.getElementById("monthlyDepositGoalRemaining");
+    const yearEndForecastTotalEl = document.getElementById("yearEndForecastTotal");
+    const yearEndForecastDepositsEl = document.getElementById("yearEndForecastDeposits");
+    const yearEndForecastGapEl = document.getElementById("yearEndForecastGap");
+    const yearEndForecastMetaEl = document.getElementById("yearEndForecastMeta");
     const categoryGoalStatsEl = document.getElementById("categoryGoalStats");
     const thisMonthSnapshotEl = document.getElementById("thisMonthSnapshot");
     const monthlyChangeEl = document.getElementById("monthlyChange");
@@ -1214,6 +1233,18 @@
       return { totalDeposits, monthDeposits };
     }
 
+    function getYearCashflowSummary(cashflows = loadCashflows(), baseDate = new Date()) {
+      const currentYear = String(baseDate.getFullYear());
+      const yearDeposits = cashflows
+        .filter((item) => item.date.slice(0, 4) === currentYear)
+        .reduce((sum, item) => sum + item.amount, 0);
+      const elapsedMonths = baseDate.getMonth() + 1;
+      const remainingMonths = 12 - elapsedMonths;
+      const avgMonthlyDeposits = elapsedMonths > 0 ? yearDeposits / elapsedMonths : 0;
+      const projectedAdditionalDeposits = avgMonthlyDeposits * remainingMonths;
+      return { yearDeposits, elapsedMonths, remainingMonths, avgMonthlyDeposits, projectedAdditionalDeposits };
+    }
+
     function renderGoalProgress(totalJpy, goalYen) {
       goalTargetEl.textContent = goalYen > 0 ? formatYen(goalYen) : "-";
       if (goalYen <= 0) {
@@ -1247,6 +1278,25 @@
       monthlyDepositGoalMetaEl.textContent = `${formatYen(monthDeposits)} / ${formatYen(monthlyDepositGoal)}`;
       monthlyDepositGoalFillEl.style.width = `${Math.max(0, Math.min(percent, 100))}%`;
       monthlyDepositGoalRemainingEl.classList.toggle("positive", remaining === 0);
+    }
+
+    function renderYearEndForecast(totalJpy, goalYen, cashflows = loadCashflows()) {
+      const { elapsedMonths, remainingMonths, avgMonthlyDeposits, projectedAdditionalDeposits } = getYearCashflowSummary(cashflows);
+      const projectedTotal = totalJpy + projectedAdditionalDeposits;
+      yearEndForecastTotalEl.textContent = formatYen(projectedTotal);
+      yearEndForecastDepositsEl.textContent = projectedAdditionalDeposits > 0 ? formatYen(projectedAdditionalDeposits) : formatYen(0);
+
+      if (goalYen > 0) {
+        const gap = projectedTotal - goalYen;
+        const sign = gap >= 0 ? "+" : "";
+        yearEndForecastGapEl.textContent = `${sign}${formatYen(gap)}`;
+        yearEndForecastGapEl.classList.toggle("positive", gap >= 0);
+        yearEndForecastMetaEl.textContent = `今年${elapsedMonths}か月の平均入金ペースを残り${remainingMonths}か月に適用。運用益の将来分は含みません。`;
+      } else {
+        yearEndForecastGapEl.textContent = "-";
+        yearEndForecastGapEl.classList.remove("positive");
+        yearEndForecastMetaEl.textContent = `今年${elapsedMonths}か月の平均入金ペースを残り${remainingMonths}か月に適用。目標総資産を入れると差額も表示します。`;
+      }
     }
 
     function buildCategoryTotals(values) {
@@ -1534,7 +1584,8 @@
       cashflowDateEl.value = cashflowDateEl.value || new Date().toISOString().slice(0, 10);
       renderCustomAssets(settings.customAssets);
       renderCustomAssetStats(settings.customAssets);
-      const { monthDeposits } = getCashflowSummary();
+      const cashflows = loadCashflows();
+      const { monthDeposits } = getCashflowSummary(cashflows);
 
       setStatus("価格を取得しています...", false);
 
@@ -1570,6 +1621,7 @@
         totalValueEl.textContent = formatYen(totalJpy);
         renderGoalProgress(totalJpy, settings.goal);
         renderMonthlyDepositGoal(monthDeposits, settings.monthlyDepositGoal);
+        renderYearEndForecast(totalJpy, settings.goal, cashflows);
         renderCategoryGoalProgress(buildCategoryTotals({
           btc: btcValueJpy,
           eth: ethValueJpy,
@@ -1618,6 +1670,7 @@
         totalValueEl.textContent = formatYen(fallbackTotal);
         renderGoalProgress(fallbackTotal, settings.goal);
         renderMonthlyDepositGoal(monthDeposits, settings.monthlyDepositGoal);
+        renderYearEndForecast(fallbackTotal, settings.goal, cashflows);
         renderCategoryGoalProgress(buildCategoryTotals({
           btc: 0,
           eth: 0,
