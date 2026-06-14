@@ -343,80 +343,6 @@
       }
     }
 
-    .cashflow-form {
-      display: grid;
-      gap: 10px;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      align-items: end;
-    }
-
-    .cashflow-list {
-      list-style: none;
-      padding: 0;
-      margin: 12px 0 0;
-      display: grid;
-      gap: 10px;
-    }
-
-    .cashflow-item {
-      display: grid;
-      gap: 10px;
-      grid-template-columns: 110px 1fr auto auto;
-      align-items: center;
-      padding: 12px;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: #fbfdff;
-    }
-
-    .cashflow-date,
-    .cashflow-note {
-      color: var(--muted);
-      font-size: 0.9rem;
-    }
-
-    .cashflow-diff.negative {
-      color: #b42318;
-    }
-
-    .cashflow-diff.positive {
-      color: #0e9f6e;
-    }
-
-    @media (max-width: 740px) {
-      .cashflow-item {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .collapsible {
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: #fbfdff;
-    }
-
-    .collapsible summary {
-      list-style: none;
-      cursor: pointer;
-      padding: 14px 16px;
-      font-weight: 700;
-      color: var(--text);
-    }
-
-    .collapsible summary::-webkit-details-marker {
-      display: none;
-    }
-
-    .collapsible-body {
-      padding: 0 16px 16px;
-    }
-
-    .mini-meta {
-      margin: 8px 0 0;
-      color: var(--muted);
-      font-size: 0.82rem;
-      line-height: 1.45;
-    }
   </style>
 </head>
 <body>
@@ -496,21 +422,6 @@
           <p id="monthlyChange" class="stat-value">-</p>
         </article>
       </div>
-      <div class="stats" style="margin-top:12px;">
-        <article class="stat">
-          <p class="stat-title">年末予測総資産</p>
-          <p id="yearEndForecastTotal" class="stat-value">-</p>
-        </article>
-        <article class="stat">
-          <p class="stat-title">年末までの想定追加入金</p>
-          <p id="yearEndForecastDeposits" class="stat-value">-</p>
-        </article>
-        <article class="stat">
-          <p class="stat-title">目標との差</p>
-          <p id="yearEndForecastGap" class="stat-value">-</p>
-        </article>
-      </div>
-      <p id="yearEndForecastMeta" class="trend-note">今年の入金ペースから、年末時点の総資産を予測します。</p>
       <div class="trend-wrap">
         <canvas id="yearTrendChart" class="trend-canvas" aria-label="一年分の資産推移グラフ"></canvas>
         <p class="trend-note">月次スナップショットを元に、直近12か月の総資産推移を表示します。</p>
@@ -544,48 +455,6 @@
       </div>
       <p id="customAssetMode" class="trend-note">新しい資産を追加できます。</p>
       <ul id="customAssetList" class="custom-asset-list"></ul>
-    </section>
-
-    <section class="card">
-      <details class="collapsible">
-        <summary>入金履歴</summary>
-        <div class="collapsible-body">
-          <div class="cashflow-form">
-            <label>
-              日付
-              <input id="cashflowDate" type="date" />
-            </label>
-            <label>
-              入金先
-              <input id="cashflowAsset" type="text" maxlength="24" placeholder="例: BTC / 投資信託 / 預金" />
-            </label>
-            <label>
-              金額 (円)
-              <input id="cashflowAmount" type="number" step="1" min="0" placeholder="例: 100000" />
-            </label>
-            <label>
-              メモ
-              <input id="cashflowNote" type="text" maxlength="40" placeholder="例: 4月積立" />
-            </label>
-            <button id="addCashflowBtn" class="ghost-btn" type="button">入金を記録</button>
-          </div>
-          <div class="stats" style="margin-top:12px;">
-            <article class="stat">
-              <p class="stat-title">入金累計</p>
-              <p id="cashflowTotal" class="stat-value">-</p>
-            </article>
-            <article class="stat">
-              <p class="stat-title">今月入金</p>
-              <p id="cashflowMonthTotal" class="stat-value">-</p>
-            </article>
-            <article class="stat">
-              <p class="stat-title">評価額との差額</p>
-              <p id="cashflowDiff" class="stat-value">-</p>
-            </article>
-          </div>
-          <ul id="cashflowList" class="cashflow-list"></ul>
-        </div>
-      </details>
     </section>
 
     <section class="card">
@@ -644,7 +513,6 @@
     const PREVIOUS_STORAGE_KEY = "portfolio_btc_eth_usdt_usdc_fund_deposit_kyosai_v1";
     const LEGACY_STORAGE_KEY = "portfolio_btc_eth_usdt_usdc_fund_deposit_v1";
     const SNAPSHOT_KEY = "portfolio_monthly_snapshots_v1";
-    const CASHFLOW_KEY = "portfolio_cashflow_history_v1";
     const PRICE_CACHE_KEY = "portfolio_last_price_cache_v1";
     const PRICE_URL = "https://api.coinbase.com/v2/exchange-rates?currency=USD";
     const CATEGORY_DEFS = [
@@ -668,11 +536,6 @@
     const customAssetAmountEl = document.getElementById("customAssetAmount");
     const customAssetCategoryEl = document.getElementById("customAssetCategory");
     const customAssetModeEl = document.getElementById("customAssetMode");
-    const cashflowDateEl = document.getElementById("cashflowDate");
-    const cashflowAssetEl = document.getElementById("cashflowAsset");
-    const cashflowAmountEl = document.getElementById("cashflowAmount");
-    const cashflowNoteEl = document.getElementById("cashflowNote");
-
     const btcPriceEl = document.getElementById("btcPrice");
     const ethPriceEl = document.getElementById("ethPrice");
     const usdtPriceUsdEl = document.getElementById("usdtPriceUsd");
@@ -686,10 +549,6 @@
     const goalPercentEl = document.getElementById("goalPercent");
     const goalMetaEl = document.getElementById("goalMeta");
     const goalFillEl = document.getElementById("goalFill");
-    const yearEndForecastTotalEl = document.getElementById("yearEndForecastTotal");
-    const yearEndForecastDepositsEl = document.getElementById("yearEndForecastDeposits");
-    const yearEndForecastGapEl = document.getElementById("yearEndForecastGap");
-    const yearEndForecastMetaEl = document.getElementById("yearEndForecastMeta");
     const thisMonthSnapshotEl = document.getElementById("thisMonthSnapshot");
     const monthlyChangeEl = document.getElementById("monthlyChange");
     const yearTrendChartEl = document.getElementById("yearTrendChart");
@@ -698,13 +557,8 @@
     const assetLegendEl = document.getElementById("assetLegend");
     const customAssetListEl = document.getElementById("customAssetList");
     const customAssetStatsEl = document.getElementById("customAssetStats");
-    const cashflowTotalEl = document.getElementById("cashflowTotal");
-    const cashflowMonthTotalEl = document.getElementById("cashflowMonthTotal");
-    const cashflowDiffEl = document.getElementById("cashflowDiff");
-    const cashflowListEl = document.getElementById("cashflowList");
     const addCustomAssetBtn = document.getElementById("addCustomAssetBtn");
     const cancelCustomAssetEditBtn = document.getElementById("cancelCustomAssetEditBtn");
-    const addCashflowBtn = document.getElementById("addCashflowBtn");
     const saveBtn = document.getElementById("saveBtn");
     const refreshBtn = document.getElementById("refreshBtn");
     let lastPieValues = { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0, custom: [] };
@@ -740,20 +594,6 @@
     function getCustomAssetColor(index) {
       const palette = ["#ef4444", "#f59e0b", "#10b981", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899"];
       return palette[index % palette.length];
-    }
-
-    function normalizeCashflows(items) {
-      if (!Array.isArray(items)) return [];
-      return items
-        .map((item, index) => ({
-          id: typeof item?.id === "string" && item.id ? item.id : `cashflow-${Date.now()}-${index}`,
-          date: /^\d{4}-\d{2}-\d{2}$/.test(String(item?.date || "")) ? String(item.date) : new Date().toISOString().slice(0, 10),
-          asset: String(item?.asset || "").trim().slice(0, 24),
-          amount: safeNumber(item?.amount),
-          note: String(item?.note || "").trim().slice(0, 40)
-        }))
-        .filter((item) => item.asset && item.amount >= 0)
-        .sort((a, b) => b.date.localeCompare(a.date));
     }
 
     function loadSettings() {
@@ -1041,77 +881,6 @@
       };
     }
 
-    function loadCashflows() {
-      try {
-        const raw = JSON.parse(localStorage.getItem(CASHFLOW_KEY) || "[]");
-        return normalizeCashflows(raw);
-      } catch {
-        return [];
-      }
-    }
-
-    function saveCashflows(items) {
-      localStorage.setItem(CASHFLOW_KEY, JSON.stringify(normalizeCashflows(items)));
-    }
-
-    function renderCashflows(totalJpy) {
-      const cashflows = loadCashflows();
-      cashflowListEl.innerHTML = "";
-
-      if (!cashflows.length) {
-        const li = document.createElement("li");
-        li.className = "cashflow-item";
-        li.textContent = "入金履歴はまだありません";
-        cashflowListEl.appendChild(li);
-      } else {
-        cashflows.forEach((item) => {
-          const li = document.createElement("li");
-          li.className = "cashflow-item";
-          li.innerHTML = `
-            <div class="cashflow-date">${item.date}</div>
-            <div>
-              <div class="custom-asset-name">${item.asset}</div>
-              <div class="cashflow-note">${item.note || ""}</div>
-            </div>
-            <div class="custom-asset-amount">${formatYen(item.amount)}</div>
-            <button class="ghost-btn" type="button" data-remove-cashflow="${item.id}">削除</button>
-          `;
-          cashflowListEl.appendChild(li);
-        });
-      }
-
-      const { totalDeposits, monthDeposits } = getCashflowSummary(cashflows);
-      const diff = totalJpy - totalDeposits;
-      const sign = diff >= 0 ? "+" : "";
-
-      cashflowTotalEl.textContent = formatYen(totalDeposits);
-      cashflowMonthTotalEl.textContent = formatYen(monthDeposits);
-      cashflowDiffEl.textContent = `${sign}${formatYen(diff)}`;
-      cashflowDiffEl.classList.toggle("positive", diff >= 0);
-      cashflowDiffEl.classList.toggle("negative", diff < 0);
-    }
-
-    function getCashflowSummary(cashflows = loadCashflows()) {
-      const totalDeposits = cashflows.reduce((sum, item) => sum + item.amount, 0);
-      const currentMonth = monthId(new Date());
-      const monthDeposits = cashflows
-        .filter((item) => item.date.slice(0, 7) === currentMonth)
-        .reduce((sum, item) => sum + item.amount, 0);
-      return { totalDeposits, monthDeposits };
-    }
-
-    function getYearCashflowSummary(cashflows = loadCashflows(), baseDate = new Date()) {
-      const currentYear = String(baseDate.getFullYear());
-      const yearDeposits = cashflows
-        .filter((item) => item.date.slice(0, 4) === currentYear)
-        .reduce((sum, item) => sum + item.amount, 0);
-      const elapsedMonths = baseDate.getMonth() + 1;
-      const remainingMonths = 12 - elapsedMonths;
-      const avgMonthlyDeposits = elapsedMonths > 0 ? yearDeposits / elapsedMonths : 0;
-      const projectedAdditionalDeposits = avgMonthlyDeposits * remainingMonths;
-      return { yearDeposits, elapsedMonths, remainingMonths, avgMonthlyDeposits, projectedAdditionalDeposits };
-    }
-
     function renderGoalProgress(totalJpy, goalYen) {
       goalTargetEl.textContent = goalYen > 0 ? formatYen(goalYen) : "-";
       if (goalYen <= 0) {
@@ -1125,25 +894,6 @@
       goalPercentEl.textContent = `${percent.toFixed(1)}%`;
       goalMetaEl.textContent = `${formatYen(totalJpy)} / ${formatYen(goalYen)}`;
       goalFillEl.style.width = `${Math.max(0, Math.min(percent, 100))}%`;
-    }
-
-    function renderYearEndForecast(totalJpy, goalYen, cashflows = loadCashflows()) {
-      const { elapsedMonths, remainingMonths, avgMonthlyDeposits, projectedAdditionalDeposits } = getYearCashflowSummary(cashflows);
-      const projectedTotal = totalJpy + projectedAdditionalDeposits;
-      yearEndForecastTotalEl.textContent = formatYen(projectedTotal);
-      yearEndForecastDepositsEl.textContent = projectedAdditionalDeposits > 0 ? formatYen(projectedAdditionalDeposits) : formatYen(0);
-
-      if (goalYen > 0) {
-        const gap = projectedTotal - goalYen;
-        const sign = gap >= 0 ? "+" : "";
-        yearEndForecastGapEl.textContent = `${sign}${formatYen(gap)}`;
-        yearEndForecastGapEl.classList.toggle("positive", gap >= 0);
-        yearEndForecastMetaEl.textContent = `今年${elapsedMonths}か月の平均入金ペースを残り${remainingMonths}か月に適用。運用益の将来分は含みません。`;
-      } else {
-        yearEndForecastGapEl.textContent = "-";
-        yearEndForecastGapEl.classList.remove("positive");
-        yearEndForecastMetaEl.textContent = `今年${elapsedMonths}か月の平均入金ペースを残り${remainingMonths}か月に適用。目標総資産を入れると差額も表示します。`;
-      }
     }
 
     function renderMonthlySnapshot(totalJpy) {
@@ -1363,10 +1113,8 @@
       depositYenEl.value = settings.deposit || "";
       kyosaiYenEl.value = settings.kyosai || "";
       goalYenEl.value = settings.goal || "";
-      cashflowDateEl.value = cashflowDateEl.value || new Date().toISOString().slice(0, 10);
       renderCustomAssets(settings.customAssets);
       renderCustomAssetStats(settings.customAssets);
-      const cashflows = loadCashflows();
 
       setStatus("価格を取得しています...", false);
 
@@ -1401,9 +1149,7 @@
         kyosaiValueEl.textContent = formatYen(kyosaiValueJpy);
         totalValueEl.textContent = formatYen(totalJpy);
         renderGoalProgress(totalJpy, settings.goal);
-        renderYearEndForecast(totalJpy, settings.goal, cashflows);
         renderMonthlySnapshot(totalJpy);
-        renderCashflows(totalJpy);
         drawYearTrendChart(buildTrendSeries());
         drawAssetPie({
           btc: btcValueJpy,
@@ -1439,9 +1185,7 @@
         const fallbackTotal = fundOnly + depositOnly + kyosaiOnly + customOnly;
         totalValueEl.textContent = formatYen(fallbackTotal);
         renderGoalProgress(fallbackTotal, settings.goal);
-        renderYearEndForecast(fallbackTotal, settings.goal, cashflows);
         renderMonthlySnapshot(fallbackTotal);
-        renderCashflows(fallbackTotal);
         drawYearTrendChart(buildTrendSeries());
         drawAssetPie({ btc: 0, eth: 0, usdt: 0, usdc: 0, fund: fundOnly, deposit: depositOnly, kyosai: kyosaiOnly, custom: settings.customAssets });
       }
@@ -1490,26 +1234,6 @@
 
     cancelCustomAssetEditBtn.addEventListener("click", resetCustomAssetEditor);
 
-    addCashflowBtn.addEventListener("click", () => {
-      const date = cashflowDateEl.value || new Date().toISOString().slice(0, 10);
-      const asset = cashflowAssetEl.value.trim().slice(0, 24);
-      const amount = safeNumber(cashflowAmountEl.value);
-      const note = cashflowNoteEl.value.trim().slice(0, 40);
-      if (!asset) {
-        setStatus("入金先を入力してください。", true);
-        return;
-      }
-      const nextCashflows = [
-        ...loadCashflows(),
-        { id: `cashflow-${Date.now()}`, date, asset, amount, note }
-      ];
-      saveCashflows(nextCashflows);
-      cashflowAssetEl.value = "";
-      cashflowAmountEl.value = "";
-      cashflowNoteEl.value = "";
-      fetchAndRender();
-    });
-
     customAssetListEl.addEventListener("click", (event) => {
       const editButton = event.target.closest("[data-edit-custom]");
       if (editButton) {
@@ -1534,21 +1258,11 @@
       fetchAndRender();
     });
 
-    cashflowListEl.addEventListener("click", (event) => {
-      const button = event.target.closest("[data-remove-cashflow]");
-      if (!button) return;
-      const id = button.getAttribute("data-remove-cashflow");
-      const nextCashflows = loadCashflows().filter((item) => item.id !== id);
-      saveCashflows(nextCashflows);
-      fetchAndRender();
-    });
-
     window.addEventListener("resize", () => {
       drawAssetPie(lastPieValues);
       drawYearTrendChart(lastTrendValues);
     });
 
-    renderCashflows(0);
     drawAssetPie({ btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0, custom: [] });
     drawYearTrendChart(buildTrendSeries());
     fetchAndRender();
