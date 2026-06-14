@@ -131,6 +131,19 @@
       display: contents;
     }
 
+    .summary-stats {
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    }
+
+    .summary-total {
+      grid-column: span 2;
+    }
+
+    .summary-total .stat-value {
+      font-size: clamp(1.65rem, 2vw + 1rem, 2.45rem);
+      color: var(--accent);
+    }
+
     .stat-title {
       color: var(--muted);
       font-size: 0.85rem;
@@ -261,6 +274,54 @@
       .pie-canvas {
         max-width: 100%;
       }
+
+      .summary-total {
+        grid-column: auto;
+      }
+    }
+
+    .editor-panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 10px 24px rgba(24, 32, 42, 0.08);
+      overflow: hidden;
+    }
+
+    .editor-panel summary {
+      cursor: pointer;
+      list-style: none;
+      padding: 18px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .editor-panel summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .editor-panel summary::after {
+      content: "開く";
+      float: right;
+      color: var(--accent);
+      font-size: 0.9rem;
+    }
+
+    .editor-panel[open] summary::after {
+      content: "閉じる";
+    }
+
+    .editor-body {
+      padding: 0 18px 18px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .editor-block-title {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 0.95rem;
+      font-weight: 700;
     }
 
     .custom-asset-form {
@@ -353,108 +414,122 @@
     </section>
 
     <section class="card">
-      <div class="grid">
-        <label>
-          BTC 保有数量
-          <input id="btcAmount" type="number" step="0.00000001" min="0" placeholder="例: 0.12" />
-        </label>
-        <label>
-          ETH 保有数量
-          <input id="ethAmount" type="number" step="0.00000001" min="0" placeholder="例: 1.8" />
-        </label>
-        <label>
-          USDT 保有数量
-          <input id="usdtAmount" type="number" step="0.000001" min="0" placeholder="例: 500" />
-        </label>
-        <label>
-          USDC 保有数量
-          <input id="usdcAmount" type="number" step="0.000001" min="0" placeholder="例: 350" />
-        </label>
-        <label>
-          投資信託 (円)
-          <input id="fundYen" type="number" step="1" min="0" placeholder="例: 1200000" />
-        </label>
-        <label>
-          預金 (円)
-          <input id="depositYen" type="number" step="1" min="0" placeholder="例: 350000" />
-        </label>
-        <label>
-          小規模企業共済 (円)
-          <input id="kyosaiYen" type="number" step="1" min="0" placeholder="例: 1800000" />
-        </label>
-        <label>
-          目標総資産 (円)
-          <input id="goalYen" type="number" step="1" min="0" placeholder="例: 10000000" />
-        </label>
-      </div>
-
-      <div class="actions">
-        <button id="saveBtn" class="primary" type="button">保有情報を保存</button>
-        <button id="refreshBtn" class="secondary" type="button">価格を更新</button>
-      </div>
-
-      <p id="status" class="status"></p>
-    </section>
-
-    <section class="card">
-      <p class="sub">目標進捗と月次スナップショット</p>
-      <div class="goal-wrap">
-        <p id="goalMeta" class="goal-meta">目標を入力すると達成率を表示します</p>
-        <div class="goal-track">
-          <div id="goalFill" class="goal-fill"></div>
-        </div>
-      </div>
-      <div class="stats" style="margin-top:12px;">
-        <article class="stat">
-          <p class="stat-title">目標額 (円)</p>
-          <p id="goalTarget" class="stat-value">-</p>
+      <p class="sub">資産サマリー</p>
+      <div class="stats summary-stats" style="margin-top:12px;">
+        <article class="stat summary-total">
+          <p class="stat-title">総資産評価額 (円)</p>
+          <p id="totalValue" class="stat-value">-</p>
         </article>
         <article class="stat">
           <p class="stat-title">達成率</p>
           <p id="goalPercent" class="stat-value">-</p>
         </article>
         <article class="stat">
-          <p class="stat-title">今月スナップショット</p>
-          <p id="thisMonthSnapshot" class="stat-value">-</p>
+          <p class="stat-title">目標額 (円)</p>
+          <p id="goalTarget" class="stat-value">-</p>
         </article>
         <article class="stat">
           <p class="stat-title">前月比</p>
           <p id="monthlyChange" class="stat-value">-</p>
         </article>
+        <article class="stat">
+          <p class="stat-title">今月スナップショット</p>
+          <p id="thisMonthSnapshot" class="stat-value">-</p>
+        </article>
       </div>
+      <div class="goal-wrap">
+        <p id="goalMeta" class="goal-meta">目標を入力すると達成率を表示します</p>
+        <div class="goal-track">
+          <div id="goalFill" class="goal-fill"></div>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="refreshBtn" class="secondary" type="button">価格を更新</button>
+      </div>
+      <p id="status" class="status"></p>
+    </section>
+
+    <details class="editor-panel">
+      <summary>保有情報を編集</summary>
+      <div class="editor-body">
+        <section>
+          <p class="editor-block-title">保有数量と円資産</p>
+          <div class="grid">
+            <label>
+              BTC 保有数量
+              <input id="btcAmount" type="number" step="0.00000001" min="0" placeholder="例: 0.12" />
+            </label>
+            <label>
+              ETH 保有数量
+              <input id="ethAmount" type="number" step="0.00000001" min="0" placeholder="例: 1.8" />
+            </label>
+            <label>
+              USDT 保有数量
+              <input id="usdtAmount" type="number" step="0.000001" min="0" placeholder="例: 500" />
+            </label>
+            <label>
+              USDC 保有数量
+              <input id="usdcAmount" type="number" step="0.000001" min="0" placeholder="例: 350" />
+            </label>
+            <label>
+              投資信託 (円)
+              <input id="fundYen" type="number" step="1" min="0" placeholder="例: 1200000" />
+            </label>
+            <label>
+              預金 (円)
+              <input id="depositYen" type="number" step="1" min="0" placeholder="例: 350000" />
+            </label>
+            <label>
+              小規模企業共済 (円)
+              <input id="kyosaiYen" type="number" step="1" min="0" placeholder="例: 1800000" />
+            </label>
+            <label>
+              目標総資産 (円)
+              <input id="goalYen" type="number" step="1" min="0" placeholder="例: 10000000" />
+            </label>
+          </div>
+          <div class="actions">
+            <button id="saveBtn" class="primary" type="button">保有情報を保存</button>
+          </div>
+        </section>
+
+        <section>
+          <p class="editor-block-title">好きな資産を追加 (円評価)</p>
+          <div class="custom-asset-form">
+            <label>
+              資産名
+              <input id="customAssetName" type="text" maxlength="24" placeholder="例: 個別株 / 現金 / ポイント" />
+            </label>
+            <label>
+              金額 (円)
+              <input id="customAssetAmount" type="number" step="1" min="0" placeholder="例: 250000" />
+            </label>
+            <label>
+              カテゴリ
+              <select id="customAssetCategory">
+                <option value="cash">現金</option>
+                <option value="investment">投資信託</option>
+                <option value="crypto">暗号資産</option>
+                <option value="kyosai">共済</option>
+                <option value="real_estate">不動産</option>
+                <option value="other" selected>その他</option>
+              </select>
+            </label>
+            <button id="addCustomAssetBtn" class="ghost-btn" type="button">資産を追加</button>
+            <button id="cancelCustomAssetEditBtn" class="ghost-btn" type="button" hidden>編集をキャンセル</button>
+          </div>
+          <p id="customAssetMode" class="trend-note">新しい資産を追加できます。</p>
+          <ul id="customAssetList" class="custom-asset-list"></ul>
+        </section>
+      </div>
+    </details>
+
+    <section class="card">
+      <p class="sub">資産推移</p>
       <div class="trend-wrap">
         <canvas id="yearTrendChart" class="trend-canvas" aria-label="一年分の資産推移グラフ"></canvas>
         <p class="trend-note">月次スナップショットを元に、直近12か月の総資産推移を表示します。</p>
       </div>
-    </section>
-
-    <section class="card">
-      <p class="sub">好きな資産を追加 (円評価)</p>
-      <div class="custom-asset-form">
-        <label>
-          資産名
-          <input id="customAssetName" type="text" maxlength="24" placeholder="例: 個別株 / 現金 / ポイント" />
-        </label>
-        <label>
-          金額 (円)
-          <input id="customAssetAmount" type="number" step="1" min="0" placeholder="例: 250000" />
-        </label>
-        <label>
-          カテゴリ
-          <select id="customAssetCategory">
-            <option value="cash">現金</option>
-            <option value="investment">投資信託</option>
-            <option value="crypto">暗号資産</option>
-            <option value="kyosai">共済</option>
-            <option value="real_estate">不動産</option>
-            <option value="other" selected>その他</option>
-          </select>
-        </label>
-        <button id="addCustomAssetBtn" class="ghost-btn" type="button">資産を追加</button>
-        <button id="cancelCustomAssetEditBtn" class="ghost-btn" type="button" hidden>編集をキャンセル</button>
-      </div>
-      <p id="customAssetMode" class="trend-note">新しい資産を追加できます。</p>
-      <ul id="customAssetList" class="custom-asset-list"></ul>
     </section>
 
     <section class="card">
@@ -492,10 +567,6 @@
           <p id="kyosaiValue" class="stat-value">-</p>
         </article>
         <div id="customAssetStats" class="stat-group"></div>
-        <article class="stat">
-          <p class="stat-title">総資産評価額 (円)</p>
-          <p id="totalValue" class="stat-value">-</p>
-        </article>
       </div>
     </section>
 
