@@ -263,31 +263,6 @@
       }
     }
 
-    .svg-tools {
-      display: grid;
-      gap: 10px;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      align-items: center;
-    }
-
-    .svg-preview {
-      margin-top: 12px;
-      min-height: 120px;
-      border: 1px dashed var(--line);
-      border-radius: 12px;
-      background: #fbfdff;
-      padding: 12px;
-      display: grid;
-      place-items: center;
-      color: var(--muted);
-    }
-
-    .svg-preview img {
-      max-width: 100%;
-      max-height: 220px;
-      object-fit: contain;
-    }
-
     .custom-asset-form {
       display: grid;
       gap: 10px;
@@ -485,34 +460,6 @@
           目標総資産 (円)
           <input id="goalYen" type="number" step="1" min="0" placeholder="例: 10000000" />
         </label>
-        <label>
-          現金目標 (円)
-          <input id="goalCashYen" type="number" step="1" min="0" placeholder="例: 3000000" />
-        </label>
-        <label>
-          投資信託目標 (円)
-          <input id="goalInvestmentYen" type="number" step="1" min="0" placeholder="例: 5000000" />
-        </label>
-        <label>
-          暗号資産目標 (円)
-          <input id="goalCryptoYen" type="number" step="1" min="0" placeholder="例: 2000000" />
-        </label>
-        <label>
-          共済目標 (円)
-          <input id="goalKyosaiYen" type="number" step="1" min="0" placeholder="例: 1500000" />
-        </label>
-        <label>
-          不動産目標 (円)
-          <input id="goalRealEstateYen" type="number" step="1" min="0" placeholder="例: 20000000" />
-        </label>
-        <label>
-          その他目標 (円)
-          <input id="goalOtherYen" type="number" step="1" min="0" placeholder="例: 500000" />
-        </label>
-        <label>
-          月間入金目標 (円)
-          <input id="monthlyDepositGoalYen" type="number" step="1" min="0" placeholder="例: 150000" />
-        </label>
       </div>
 
       <div class="actions">
@@ -547,28 +494,6 @@
         <article class="stat">
           <p class="stat-title">前月比</p>
           <p id="monthlyChange" class="stat-value">-</p>
-        </article>
-      </div>
-      <div id="categoryGoalStats" class="stats" style="margin-top:12px;"></div>
-      <p class="trend-note">カテゴリ別目標は、固定資産は自動分類し、追加資産は選択したカテゴリへ集計します。</p>
-      <div class="goal-wrap" style="margin-top:12px;">
-        <p id="monthlyDepositGoalMeta" class="goal-meta">月間入金目標を入力すると今月の進捗を表示します</p>
-        <div class="goal-track">
-          <div id="monthlyDepositGoalFill" class="goal-fill"></div>
-        </div>
-      </div>
-      <div class="stats" style="margin-top:12px;">
-        <article class="stat">
-          <p class="stat-title">月間入金目標 (円)</p>
-          <p id="monthlyDepositGoalTarget" class="stat-value">-</p>
-        </article>
-        <article class="stat">
-          <p class="stat-title">今月入金達成率</p>
-          <p id="monthlyDepositGoalPercent" class="stat-value">-</p>
-        </article>
-        <article class="stat">
-          <p class="stat-title">目標まであと</p>
-          <p id="monthlyDepositGoalRemaining" class="stat-value">-</p>
         </article>
       </div>
       <div class="stats" style="margin-top:12px;">
@@ -664,19 +589,6 @@
     </section>
 
     <section class="card">
-      <details class="collapsible">
-        <summary>SVG読み込み（ロゴなど）</summary>
-        <div class="collapsible-body">
-          <div class="svg-tools">
-            <input id="svgInput" type="file" accept=".svg,image/svg+xml" />
-            <button id="clearSvgBtn" type="button">SVGを削除</button>
-          </div>
-          <div id="svgPreview" class="svg-preview">SVGはまだ読み込まれていません</div>
-        </div>
-      </details>
-    </section>
-
-    <section class="card">
       <div class="stats">
         <article class="stat">
           <p class="stat-title">BTC 価格 (円)</p>
@@ -734,7 +646,6 @@
     const SNAPSHOT_KEY = "portfolio_monthly_snapshots_v1";
     const CASHFLOW_KEY = "portfolio_cashflow_history_v1";
     const PRICE_CACHE_KEY = "portfolio_last_price_cache_v1";
-    const SVG_KEY = "portfolio_custom_svg_v1";
     const PRICE_URL = "https://api.coinbase.com/v2/exchange-rates?currency=USD";
     const CATEGORY_DEFS = [
       { key: "cash", label: "現金" },
@@ -753,13 +664,6 @@
     const depositYenEl = document.getElementById("depositYen");
     const kyosaiYenEl = document.getElementById("kyosaiYen");
     const goalYenEl = document.getElementById("goalYen");
-    const goalCashYenEl = document.getElementById("goalCashYen");
-    const goalInvestmentYenEl = document.getElementById("goalInvestmentYen");
-    const goalCryptoYenEl = document.getElementById("goalCryptoYen");
-    const goalKyosaiYenEl = document.getElementById("goalKyosaiYen");
-    const goalRealEstateYenEl = document.getElementById("goalRealEstateYen");
-    const goalOtherYenEl = document.getElementById("goalOtherYen");
-    const monthlyDepositGoalYenEl = document.getElementById("monthlyDepositGoalYen");
     const customAssetNameEl = document.getElementById("customAssetName");
     const customAssetAmountEl = document.getElementById("customAssetAmount");
     const customAssetCategoryEl = document.getElementById("customAssetCategory");
@@ -782,16 +686,10 @@
     const goalPercentEl = document.getElementById("goalPercent");
     const goalMetaEl = document.getElementById("goalMeta");
     const goalFillEl = document.getElementById("goalFill");
-    const monthlyDepositGoalMetaEl = document.getElementById("monthlyDepositGoalMeta");
-    const monthlyDepositGoalFillEl = document.getElementById("monthlyDepositGoalFill");
-    const monthlyDepositGoalTargetEl = document.getElementById("monthlyDepositGoalTarget");
-    const monthlyDepositGoalPercentEl = document.getElementById("monthlyDepositGoalPercent");
-    const monthlyDepositGoalRemainingEl = document.getElementById("monthlyDepositGoalRemaining");
     const yearEndForecastTotalEl = document.getElementById("yearEndForecastTotal");
     const yearEndForecastDepositsEl = document.getElementById("yearEndForecastDeposits");
     const yearEndForecastGapEl = document.getElementById("yearEndForecastGap");
     const yearEndForecastMetaEl = document.getElementById("yearEndForecastMeta");
-    const categoryGoalStatsEl = document.getElementById("categoryGoalStats");
     const thisMonthSnapshotEl = document.getElementById("thisMonthSnapshot");
     const monthlyChangeEl = document.getElementById("monthlyChange");
     const yearTrendChartEl = document.getElementById("yearTrendChart");
@@ -804,9 +702,6 @@
     const cashflowMonthTotalEl = document.getElementById("cashflowMonthTotal");
     const cashflowDiffEl = document.getElementById("cashflowDiff");
     const cashflowListEl = document.getElementById("cashflowList");
-    const svgInputEl = document.getElementById("svgInput");
-    const clearSvgBtn = document.getElementById("clearSvgBtn");
-    const svgPreviewEl = document.getElementById("svgPreview");
     const addCustomAssetBtn = document.getElementById("addCustomAssetBtn");
     const cancelCustomAssetEditBtn = document.getElementById("cancelCustomAssetEditBtn");
     const addCashflowBtn = document.getElementById("addCashflowBtn");
@@ -821,26 +716,9 @@
       return Number.isFinite(n) && n >= 0 ? n : 0;
     }
 
-    function defaultCategoryGoals() {
-      return { cash: 0, investment: 0, crypto: 0, kyosai: 0, real_estate: 0, other: 0 };
-    }
-
     function normalizeCategory(value) {
       const key = String(value || "").trim();
       return CATEGORY_DEFS.some((item) => item.key === key) ? key : "other";
-    }
-
-    function normalizeCategoryGoals(value) {
-      const base = defaultCategoryGoals();
-      if (!value || typeof value !== "object") return base;
-      return {
-        cash: safeNumber(value.cash),
-        investment: safeNumber(value.investment),
-        crypto: safeNumber(value.crypto),
-        kyosai: safeNumber(value.kyosai),
-        real_estate: safeNumber(value.real_estate),
-        other: safeNumber(value.other)
-      };
     }
 
     function getCategoryLabel(key) {
@@ -885,7 +763,7 @@
         const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
         const data = JSON.parse(latest || previous || legacy || "null");
         if (!data || typeof data !== "object") {
-          return { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0, goal: 0, monthlyDepositGoal: 0, categoryGoals: defaultCategoryGoals(), customAssets: [] };
+          return { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0, goal: 0, customAssets: [] };
         }
         return {
           btc: safeNumber(data.btc),
@@ -896,12 +774,10 @@
           deposit: safeNumber(data.deposit),
           kyosai: safeNumber(data.kyosai),
           goal: safeNumber(data.goal),
-          monthlyDepositGoal: safeNumber(data.monthlyDepositGoal),
-          categoryGoals: normalizeCategoryGoals(data.categoryGoals),
           customAssets: normalizeCustomAssets(data.customAssets)
         };
       } catch {
-        return { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0, goal: 0, monthlyDepositGoal: 0, categoryGoals: defaultCategoryGoals(), customAssets: [] };
+        return { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0, goal: 0, customAssets: [] };
       }
     }
 
@@ -917,15 +793,6 @@
         deposit: safeNumber(depositYenEl.value),
         kyosai: safeNumber(kyosaiYenEl.value),
         goal: safeNumber(goalYenEl.value),
-        monthlyDepositGoal: safeNumber(monthlyDepositGoalYenEl.value),
-        categoryGoals: normalizeCategoryGoals({
-          cash: goalCashYenEl.value,
-          investment: goalInvestmentYenEl.value,
-          crypto: goalCryptoYenEl.value,
-          kyosai: goalKyosaiYenEl.value,
-          real_estate: goalRealEstateYenEl.value,
-          other: goalOtherYenEl.value
-        }),
         customAssets: normalizeCustomAssets(customAssets)
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
@@ -1260,26 +1127,6 @@
       goalFillEl.style.width = `${Math.max(0, Math.min(percent, 100))}%`;
     }
 
-    function renderMonthlyDepositGoal(monthDeposits, monthlyDepositGoal) {
-      monthlyDepositGoalTargetEl.textContent = monthlyDepositGoal > 0 ? formatYen(monthlyDepositGoal) : "-";
-      if (monthlyDepositGoal <= 0) {
-        monthlyDepositGoalPercentEl.textContent = "-";
-        monthlyDepositGoalRemainingEl.textContent = "-";
-        monthlyDepositGoalMetaEl.textContent = "月間入金目標を入力すると今月の進捗を表示します";
-        monthlyDepositGoalFillEl.style.width = "0%";
-        monthlyDepositGoalRemainingEl.classList.remove("positive");
-        return;
-      }
-      const ratio = monthDeposits / monthlyDepositGoal;
-      const percent = ratio * 100;
-      const remaining = Math.max(0, monthlyDepositGoal - monthDeposits);
-      monthlyDepositGoalPercentEl.textContent = `${percent.toFixed(1)}%`;
-      monthlyDepositGoalRemainingEl.textContent = remaining > 0 ? formatYen(remaining) : "達成";
-      monthlyDepositGoalMetaEl.textContent = `${formatYen(monthDeposits)} / ${formatYen(monthlyDepositGoal)}`;
-      monthlyDepositGoalFillEl.style.width = `${Math.max(0, Math.min(percent, 100))}%`;
-      monthlyDepositGoalRemainingEl.classList.toggle("positive", remaining === 0);
-    }
-
     function renderYearEndForecast(totalJpy, goalYen, cashflows = loadCashflows()) {
       const { elapsedMonths, remainingMonths, avgMonthlyDeposits, projectedAdditionalDeposits } = getYearCashflowSummary(cashflows);
       const projectedTotal = totalJpy + projectedAdditionalDeposits;
@@ -1297,38 +1144,6 @@
         yearEndForecastGapEl.classList.remove("positive");
         yearEndForecastMetaEl.textContent = `今年${elapsedMonths}か月の平均入金ペースを残り${remainingMonths}か月に適用。目標総資産を入れると差額も表示します。`;
       }
-    }
-
-    function buildCategoryTotals(values) {
-      const totals = {
-        cash: safeNumber(values.deposit),
-        investment: safeNumber(values.fund),
-        crypto: safeNumber(values.btc) + safeNumber(values.eth) + safeNumber(values.usdt) + safeNumber(values.usdc),
-        kyosai: safeNumber(values.kyosai),
-        real_estate: 0,
-        other: 0
-      };
-      normalizeCustomAssets(values.custom).forEach((asset) => {
-        totals[asset.category] = safeNumber(totals[asset.category]) + asset.amount;
-      });
-      return totals;
-    }
-
-    function renderCategoryGoalProgress(totals, goals) {
-      categoryGoalStatsEl.innerHTML = "";
-      CATEGORY_DEFS.forEach((category) => {
-        const current = safeNumber(totals[category.key]);
-        const target = safeNumber(goals[category.key]);
-        const percent = target > 0 ? (current / target) * 100 : 0;
-        const article = document.createElement("article");
-        article.className = "stat";
-        article.innerHTML = `
-          <p class="stat-title">${category.label}</p>
-          <p class="stat-value">${target > 0 ? `${percent.toFixed(1)}%` : "-"}</p>
-          <p class="mini-meta">${formatYen(current)} / ${target > 0 ? formatYen(target) : "-"}</p>
-        `;
-        categoryGoalStatsEl.appendChild(article);
-      });
     }
 
     function renderMonthlySnapshot(totalJpy) {
@@ -1538,32 +1353,6 @@
       });
     }
 
-    function svgTextToDataUrl(svgText) {
-      return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
-    }
-
-    function renderSvg(svgText) {
-      if (!svgText) {
-        svgPreviewEl.textContent = "SVGはまだ読み込まれていません";
-        return;
-      }
-      const img = document.createElement("img");
-      img.alt = "読み込みSVG";
-      img.src = svgTextToDataUrl(svgText);
-      svgPreviewEl.textContent = "";
-      svgPreviewEl.appendChild(img);
-    }
-
-    function loadSvg() {
-      const svgText = localStorage.getItem(SVG_KEY) || "";
-      renderSvg(svgText);
-    }
-
-    function saveSvg(svgText) {
-      localStorage.setItem(SVG_KEY, svgText);
-      renderSvg(svgText);
-    }
-
     async function fetchAndRender() {
       const settings = loadSettings();
       btcAmountEl.value = settings.btc || "";
@@ -1574,18 +1363,10 @@
       depositYenEl.value = settings.deposit || "";
       kyosaiYenEl.value = settings.kyosai || "";
       goalYenEl.value = settings.goal || "";
-      goalCashYenEl.value = settings.categoryGoals.cash || "";
-      goalInvestmentYenEl.value = settings.categoryGoals.investment || "";
-      goalCryptoYenEl.value = settings.categoryGoals.crypto || "";
-      goalKyosaiYenEl.value = settings.categoryGoals.kyosai || "";
-      goalRealEstateYenEl.value = settings.categoryGoals.real_estate || "";
-      goalOtherYenEl.value = settings.categoryGoals.other || "";
-      monthlyDepositGoalYenEl.value = settings.monthlyDepositGoal || "";
       cashflowDateEl.value = cashflowDateEl.value || new Date().toISOString().slice(0, 10);
       renderCustomAssets(settings.customAssets);
       renderCustomAssetStats(settings.customAssets);
       const cashflows = loadCashflows();
-      const { monthDeposits } = getCashflowSummary(cashflows);
 
       setStatus("価格を取得しています...", false);
 
@@ -1620,18 +1401,7 @@
         kyosaiValueEl.textContent = formatYen(kyosaiValueJpy);
         totalValueEl.textContent = formatYen(totalJpy);
         renderGoalProgress(totalJpy, settings.goal);
-        renderMonthlyDepositGoal(monthDeposits, settings.monthlyDepositGoal);
         renderYearEndForecast(totalJpy, settings.goal, cashflows);
-        renderCategoryGoalProgress(buildCategoryTotals({
-          btc: btcValueJpy,
-          eth: ethValueJpy,
-          usdt: usdtValueJpy,
-          usdc: usdcValueJpy,
-          fund: fundValueJpy,
-          deposit: depositValueJpy,
-          kyosai: kyosaiValueJpy,
-          custom: settings.customAssets
-        }), settings.categoryGoals);
         renderMonthlySnapshot(totalJpy);
         renderCashflows(totalJpy);
         drawYearTrendChart(buildTrendSeries());
@@ -1669,18 +1439,7 @@
         const fallbackTotal = fundOnly + depositOnly + kyosaiOnly + customOnly;
         totalValueEl.textContent = formatYen(fallbackTotal);
         renderGoalProgress(fallbackTotal, settings.goal);
-        renderMonthlyDepositGoal(monthDeposits, settings.monthlyDepositGoal);
         renderYearEndForecast(fallbackTotal, settings.goal, cashflows);
-        renderCategoryGoalProgress(buildCategoryTotals({
-          btc: 0,
-          eth: 0,
-          usdt: 0,
-          usdc: 0,
-          fund: fundOnly,
-          deposit: depositOnly,
-          kyosai: kyosaiOnly,
-          custom: settings.customAssets
-        }), settings.categoryGoals);
         renderMonthlySnapshot(fallbackTotal);
         renderCashflows(fallbackTotal);
         drawYearTrendChart(buildTrendSeries());
@@ -1703,14 +1462,6 @@
     depositYenEl.addEventListener("blur", saveSettings);
     kyosaiYenEl.addEventListener("blur", saveSettings);
     goalYenEl.addEventListener("blur", saveSettings);
-    goalCashYenEl.addEventListener("blur", saveSettings);
-    goalInvestmentYenEl.addEventListener("blur", saveSettings);
-    goalCryptoYenEl.addEventListener("blur", saveSettings);
-    goalKyosaiYenEl.addEventListener("blur", saveSettings);
-    goalRealEstateYenEl.addEventListener("blur", saveSettings);
-    goalOtherYenEl.addEventListener("blur", saveSettings);
-    monthlyDepositGoalYenEl.addEventListener("blur", saveSettings);
-
     addCustomAssetBtn.addEventListener("click", () => {
       const name = customAssetNameEl.value.trim().slice(0, 24);
       const amount = safeNumber(customAssetAmountEl.value);
@@ -1792,42 +1543,11 @@
       fetchAndRender();
     });
 
-    svgInputEl.addEventListener("change", () => {
-      const file = svgInputEl.files && svgInputEl.files[0];
-      if (!file) return;
-      if (!file.type.includes("svg") && !file.name.toLowerCase().endsWith(".svg")) {
-        setStatus("SVGファイルのみ読み込めます。", true);
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = () => {
-        const svgText = String(reader.result || "");
-        if (!svgText.includes("<svg")) {
-          setStatus("SVG形式として読み込めませんでした。", true);
-          return;
-        }
-        saveSvg(svgText);
-        setStatus("SVGを読み込みました。", false);
-      };
-      reader.onerror = () => {
-        setStatus("SVGの読み込みに失敗しました。", true);
-      };
-      reader.readAsText(file);
-    });
-
-    clearSvgBtn.addEventListener("click", () => {
-      localStorage.removeItem(SVG_KEY);
-      svgInputEl.value = "";
-      renderSvg("");
-      setStatus("SVGを削除しました。", false);
-    });
-
     window.addEventListener("resize", () => {
       drawAssetPie(lastPieValues);
       drawYearTrendChart(lastTrendValues);
     });
 
-    loadSvg();
     renderCashflows(0);
     drawAssetPie({ btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0, custom: [] });
     drawYearTrendChart(buildTrendSeries());
