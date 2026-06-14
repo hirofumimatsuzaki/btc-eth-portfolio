@@ -40,6 +40,11 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Same-origin API responses can include time-sensitive market data.
+  if (url.pathname.startsWith("/api/")) {
+    return;
+  }
+
   // Always try network first for page navigations so new deployments appear quickly.
   if (request.mode === "navigate") {
     event.respondWith(

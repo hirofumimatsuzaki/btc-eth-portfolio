@@ -26,9 +26,20 @@
 - 月次スナップショットを自動保存し、前月比を表示
 - 月次スナップショットを元に、直近1年の総資産推移を折れ線グラフで表示
 - 価格API取得に失敗した場合は、最終成功時の価格キャッシュを使って継続表示
+- BTC NUPLはサーバー側APIからGlassnodeの24h最新値を取得し、市場心理ゾーンとAnnaコメントを表示
+- `GLASSNODE_API_KEY` 未設定時や取得失敗時は、画面を壊さず「取得できませんでした」と表示
 - 5分ごとに自動更新（`価格を更新`ボタンでも手動更新可能）
 - `manifest.webmanifest` と `sw.js` を含むPWA対応（ホーム画面追加・オフライン時のシェル表示）
 
+## BTC NUPL API設定
+
+Glassnode APIキーはフロントエンドに埋め込まず、サーバー側環境変数として設定します。
+
+```bash
+GLASSNODE_API_KEY=your_glassnode_api_key_here
+```
+
+このリポジトリでは `/api/btc-nupl.js` が `GLASSNODE_API_KEY` を使ってGlassnode APIを呼び出します。`.env.example` を参考に、ローカルやホスティング環境の環境変数へ設定してください。
 
 ## Repository Icon Assets
 
