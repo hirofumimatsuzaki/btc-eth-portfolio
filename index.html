@@ -161,76 +161,6 @@
       color: var(--accent-2);
     }
 
-    .nupl-card {
-      display: grid;
-      gap: 12px;
-    }
-
-    .nupl-head {
-      display: flex;
-      gap: 12px;
-      align-items: start;
-      justify-content: space-between;
-      flex-wrap: wrap;
-    }
-
-    .nupl-value {
-      margin: 0;
-      font-size: clamp(1.55rem, 1.6vw + 1rem, 2.1rem);
-      font-weight: 800;
-      color: var(--text);
-    }
-
-    .nupl-label {
-      display: inline-flex;
-      align-items: center;
-      border-radius: 999px;
-      padding: 5px 10px;
-      font-size: 0.82rem;
-      font-weight: 800;
-      border: 1px solid rgba(94, 107, 122, 0.22);
-      background: #f8fafc;
-      color: var(--muted);
-    }
-
-    .nupl-label.euphoria {
-      color: #b42318;
-      background: #fff5f5;
-      border-color: #fed7d7;
-    }
-
-    .nupl-label.belief {
-      color: #a15c07;
-      background: #fff8eb;
-      border-color: #fde7bd;
-    }
-
-    .nupl-label.optimism {
-      color: #8a6a00;
-      background: #fffbea;
-      border-color: #f7e9a6;
-    }
-
-    .nupl-label.hope {
-      color: #0e7050;
-      background: #eefbf5;
-      border-color: #c7f0dd;
-    }
-
-    .nupl-label.capitulation {
-      color: #1d4f91;
-      background: #eef6ff;
-      border-color: #c7ddff;
-    }
-
-    .nupl-comment,
-    .nupl-meta {
-      margin: 0;
-      color: var(--muted);
-      font-size: 0.92rem;
-      line-height: 1.5;
-    }
-
     .status {
       margin: 8px 0 0;
       color: var(--muted);
@@ -519,19 +449,6 @@
       <p id="status" class="status"></p>
     </section>
 
-    <section class="card nupl-card">
-      <div class="nupl-head">
-        <div>
-          <p class="stat-title">BTC NUPL</p>
-          <p id="nuplValue" class="nupl-value">取得中...</p>
-        </div>
-        <span id="nuplLabel" class="nupl-label">-</span>
-      </div>
-      <p id="nuplSignal" class="nupl-comment">Bitcoinの市場心理指標を取得しています。</p>
-      <p id="nuplAnnaComment" class="nupl-comment">Annaコメント: -</p>
-      <p id="nuplUpdatedAt" class="nupl-meta">最終更新日時: -</p>
-    </section>
-
     <details class="editor-panel">
       <summary>保有情報を編集</summary>
       <div class="editor-body">
@@ -669,7 +586,6 @@
     const SNAPSHOT_KEY = "portfolio_monthly_snapshots_v1";
     const PRICE_CACHE_KEY = "portfolio_last_price_cache_v1";
     const PRICE_URL = "https://api.coinbase.com/v2/exchange-rates?currency=USD";
-    const NUPL_URL = "/api/btc-nupl";
     const CATEGORY_DEFS = [
       { key: "cash", label: "現金" },
       { key: "investment", label: "投資信託" },
@@ -704,11 +620,6 @@
     const goalPercentEl = document.getElementById("goalPercent");
     const goalMetaEl = document.getElementById("goalMeta");
     const goalFillEl = document.getElementById("goalFill");
-    const nuplValueEl = document.getElementById("nuplValue");
-    const nuplLabelEl = document.getElementById("nuplLabel");
-    const nuplSignalEl = document.getElementById("nuplSignal");
-    const nuplAnnaCommentEl = document.getElementById("nuplAnnaComment");
-    const nuplUpdatedAtEl = document.getElementById("nuplUpdatedAt");
     const thisMonthSnapshotEl = document.getElementById("thisMonthSnapshot");
     const monthlyChangeEl = document.getElementById("monthlyChange");
     const yearTrendChartEl = document.getElementById("yearTrendChart");
@@ -890,94 +801,6 @@
         minimumFractionDigits: 2,
         maximumFractionDigits: 4
       }).format(value);
-    }
-
-    function formatNupl(value) {
-      return Number.isFinite(value) ? value.toFixed(3) : "-";
-    }
-
-    function getNuplZone(value) {
-      if (!Number.isFinite(value)) {
-        return {
-          key: "unavailable",
-          label: "取得できませんでした",
-          signal: "取得できませんでした",
-          anna: "Annaコメント: NUPLを取得できませんでした。APIキーや通信状態を確認してください。"
-        };
-      }
-      if (value >= 0.75) {
-        return {
-          key: "euphoria",
-          label: "陶酔 / Euphoria",
-          signal: "🔴 過熱。新規買いは慎重に。",
-          anna: "Annaコメント: 市場はかなり浮かれています。ここで全力買いは危険かも。"
-        };
-      }
-      if (value >= 0.5) {
-        return {
-          key: "belief",
-          label: "確信 / Belief",
-          signal: "🟠 強い相場。利確も少し意識。",
-          anna: "Annaコメント: 強い相場です。積立は継続しつつ、追加買いは慎重に。"
-        };
-      }
-      if (value >= 0.25) {
-        return {
-          key: "optimism",
-          label: "楽観〜不安 / Optimism-Anxiety",
-          signal: "🟡 通常積立ゾーン。",
-          anna: "Annaコメント: 通常運転ゾーンです。感情に流されず積立継続。"
-        };
-      }
-      if (value >= 0) {
-        return {
-          key: "hope",
-          label: "希望〜恐怖 / Hope-Fear",
-          signal: "🟢 買い増し検討ゾーン。",
-          anna: "Annaコメント: 市場はかなりビビっています。買い増し候補として注目です。"
-        };
-      }
-      return {
-        key: "capitulation",
-        label: "降伏 / Capitulation",
-        signal: "🔵 歴史的チャンス候補。ただし無理はしない。",
-        anna: "Annaコメント: かなり深い恐怖です。歴史的には大きなチャンスになりやすい場所です。"
-      };
-    }
-
-    function renderNuplUnavailable() {
-      const zone = getNuplZone(Number.NaN);
-      nuplValueEl.textContent = "取得できませんでした";
-      nuplLabelEl.textContent = zone.label;
-      nuplLabelEl.className = "nupl-label";
-      nuplSignalEl.textContent = zone.signal;
-      nuplAnnaCommentEl.textContent = zone.anna;
-      nuplUpdatedAtEl.textContent = "最終更新日時: -";
-    }
-
-    function renderNupl(data) {
-      const value = Number(data?.value);
-      if (!data?.ok || !Number.isFinite(value)) {
-        renderNuplUnavailable();
-        return;
-      }
-      const zone = getNuplZone(value);
-      const updatedAt = Number(data.timestamp) || Date.parse(data.fetchedAt || "");
-      nuplValueEl.textContent = formatNupl(value);
-      nuplLabelEl.textContent = zone.label;
-      nuplLabelEl.className = `nupl-label ${zone.key}`;
-      nuplSignalEl.textContent = zone.signal;
-      nuplAnnaCommentEl.textContent = zone.anna;
-      nuplUpdatedAtEl.textContent = `最終更新日時: ${updatedAt ? new Date(updatedAt).toLocaleString("ja-JP") : "-"}`;
-    }
-
-    async function loadAndRenderNupl() {
-      try {
-        const data = await fetchJsonWithRetry(NUPL_URL, { retries: 1, timeoutMs: 6000 });
-        renderNupl(data);
-      } catch {
-        renderNuplUnavailable();
-      }
     }
 
     function monthId(date) {
@@ -1444,10 +1267,7 @@
       fetchAndRender();
     });
 
-    refreshBtn.addEventListener("click", () => {
-      loadAndRenderNupl();
-      fetchAndRender();
-    });
+    refreshBtn.addEventListener("click", fetchAndRender);
 
     btcAmountEl.addEventListener("blur", saveSettings);
     ethAmountEl.addEventListener("blur", saveSettings);
@@ -1516,7 +1336,6 @@
 
     drawAssetPie({ btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0, custom: [] });
     drawYearTrendChart(buildTrendSeries());
-    loadAndRenderNupl();
     fetchAndRender();
     setInterval(fetchAndRender, 5 * 60 * 1000);
 
