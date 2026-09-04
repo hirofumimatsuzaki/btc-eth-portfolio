@@ -324,6 +324,18 @@
       font-weight: 700;
     }
 
+    .backup-tools {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      align-items: end;
+    }
+
+    .backup-file {
+      color: var(--muted);
+      font-weight: 700;
+    }
+
     .custom-asset-form {
       display: grid;
       gap: 10px;
@@ -521,6 +533,18 @@
           <p id="customAssetMode" class="trend-note">新しい資産を追加できます。</p>
           <ul id="customAssetList" class="custom-asset-list"></ul>
         </section>
+
+        <section>
+          <p class="editor-block-title">データ移行</p>
+          <div class="backup-tools">
+            <button id="downloadBackupBtn" class="ghost-btn" type="button">バックアップをダウンロード</button>
+            <label class="backup-file">
+              バックアップを読み込み
+              <input id="restoreBackupInput" type="file" accept="application/json,.json" />
+            </label>
+          </div>
+          <p class="trend-note">機種変更前にダウンロードし、新しい端末で同じファイルを読み込むと保存済みデータを復元できます。</p>
+        </section>
       </div>
     </details>
 
@@ -554,19 +578,7 @@
           <p class="stat-title">USD/JPY</p>
           <p id="usdJpy" class="stat-value">-</p>
         </article>
-        <article class="stat">
-          <p class="stat-title">投資信託 (円)</p>
-          <p id="fundValue" class="stat-value">-</p>
-        </article>
-        <article class="stat">
-          <p class="stat-title">預金 (円)</p>
-          <p id="depositValue" class="stat-value">-</p>
-        </article>
-        <article class="stat">
-          <p class="stat-title">小規模企業共済 (円)</p>
-          <p id="kyosaiValue" class="stat-value">-</p>
-        </article>
-        <div id="customAssetStats" class="stat-group"></div>
+        <div id="assetValueStats" class="stat-group"></div>
       </div>
     </section>
 
@@ -585,6 +597,8 @@
     const LEGACY_STORAGE_KEY = "portfolio_btc_eth_usdt_usdc_fund_deposit_v1";
     const SNAPSHOT_KEY = "portfolio_monthly_snapshots_v1";
     const PRICE_CACHE_KEY = "portfolio_last_price_cache_v1";
+    const BACKUP_VERSION = 1;
+    const BACKUP_KEYS = [STORAGE_KEY, SNAPSHOT_KEY];
     const PRICE_URL = "https://api.coinbase.com/v2/exchange-rates?currency=USD";
     const CATEGORY_DEFS = [
       { key: "cash", label: "現金" },
@@ -612,9 +626,6 @@
     const usdtPriceUsdEl = document.getElementById("usdtPriceUsd");
     const usdcPriceUsdEl = document.getElementById("usdcPriceUsd");
     const usdJpyEl = document.getElementById("usdJpy");
-    const fundValueEl = document.getElementById("fundValue");
-    const depositValueEl = document.getElementById("depositValue");
-    const kyosaiValueEl = document.getElementById("kyosaiValue");
     const totalValueEl = document.getElementById("totalValue");
     const goalTargetEl = document.getElementById("goalTarget");
     const goalPercentEl = document.getElementById("goalPercent");
@@ -627,9 +638,11 @@
     const assetPieEl = document.getElementById("assetPie");
     const assetLegendEl = document.getElementById("assetLegend");
     const customAssetListEl = document.getElementById("customAssetList");
-    const customAssetStatsEl = document.getElementById("customAssetStats");
+    const assetValueStatsEl = document.getElementById("assetValueStats");
     const addCustomAssetBtn = document.getElementById("addCustomAssetBtn");
     const cancelCustomAssetEditBtn = document.getElementById("cancelCustomAssetEditBtn");
+    const downloadBackupBtn = document.getElementById("downloadBackupBtn");
+    const restoreBackupInput = document.getElementById("restoreBackupInput");
     const saveBtn = document.getElementById("saveBtn");
     const refreshBtn = document.getElementById("refreshBtn");
     let lastPieValues = { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: 0, deposit: 0, kyosai: 0, custom: [] };
@@ -711,6 +724,71 @@
       return settings;
     }
 
+    function buildBackupPayload() {
+      const data = {};
+      BACKUP_KEYS.forEach((key) => {
+        const value = localStorage.getItem(key);
+        if (value !== null) {
+          data[key] = value;
+        }
+      });
+      return {
+        app: "btc-eth-portfolio",
+        version: BACKUP_VERSION,
+        exportedAt: new Date().toISOString(),
+        data
+      };
+    }
+
+    function downloadBackup() {
+      const payload = buildBackupPayload();
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `asset-checker-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setStatus("バックアップをダウンロードしました。", false);
+    }
+
+    function restoreBackupPayload(payload) {
+      if (!payload || payload.app !== "btc-eth-portfolio" || typeof payload.data !== "object") {
+        throw new Error("invalid backup");
+      }
+      BACKUP_KEYS.forEach((key) => {
+        const value = payload.data[key];
+        if (typeof value === "string") {
+          JSON.parse(value);
+          localStorage.setItem(key, value);
+        }
+      });
+      resetCustomAssetEditor();
+      setStatus("バックアップを読み込みました。", false);
+      fetchAndRender();
+    }
+
+    function readBackupFile(file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const payload = JSON.parse(String(reader.result || ""));
+          restoreBackupPayload(payload);
+        } catch {
+          setStatus("バックアップファイルを読み込めませんでした。", true);
+        } finally {
+          restoreBackupInput.value = "";
+        }
+      };
+      reader.onerror = () => {
+        restoreBackupInput.value = "";
+        setStatus("バックアップファイルの読み込みに失敗しました。", true);
+      };
+      reader.readAsText(file);
+    }
+
     function renderCustomAssets(customAssets) {
       customAssetListEl.innerHTML = "";
       if (!customAssets.length) {
@@ -762,16 +840,37 @@
       customAssetAmountEl.focus();
     }
 
-    function renderCustomAssetStats(customAssets) {
-      customAssetStatsEl.innerHTML = "";
-      customAssets.forEach((asset) => {
+    function sortedAssetItems(items) {
+      return [...items].sort((a, b) => b.value - a.value);
+    }
+
+    function buildAssetValueItems(values) {
+      const items = [
+        { label: "BTC", value: safeNumber(values.btc), color: "#f7931a" },
+        { label: "ETH", value: safeNumber(values.eth), color: "#627eea" },
+        { label: "USDT", value: safeNumber(values.usdt), color: "#26a17b" },
+        { label: "USDC", value: safeNumber(values.usdc), color: "#2775ca" },
+        { label: "投資信託", value: safeNumber(values.fund), color: "#c05621" },
+        { label: "預金", value: safeNumber(values.deposit), color: "#4a5568" },
+        { label: "小規模企業共済", value: safeNumber(values.kyosai), color: "#805ad5" }
+      ];
+      normalizeCustomAssets(values.custom).forEach((asset, index) => {
+        items.push({ label: asset.name, value: asset.amount, color: getCustomAssetColor(index) });
+      });
+      return sortedAssetItems(items);
+    }
+
+    function renderAssetValueStats(values) {
+      const items = buildAssetValueItems(values);
+      assetValueStatsEl.innerHTML = "";
+      items.forEach((asset) => {
         const article = document.createElement("article");
         article.className = "stat";
         article.innerHTML = `
-          <p class="stat-title">${asset.name} (円)</p>
-          <p class="stat-value">${formatYen(asset.amount)}</p>
+          <p class="stat-title">${asset.label} (円)</p>
+          <p class="stat-value">${formatYen(asset.value)}</p>
         `;
-        customAssetStatsEl.appendChild(article);
+        assetValueStatsEl.appendChild(article);
       });
     }
 
@@ -1116,18 +1215,7 @@
         kyosai: safeNumber(values.kyosai),
         custom: normalizeCustomAssets(values.custom)
       };
-      const items = [
-        { label: "BTC", value: lastPieValues.btc, color: "#f7931a" },
-        { label: "ETH", value: lastPieValues.eth, color: "#627eea" },
-        { label: "USDT", value: lastPieValues.usdt, color: "#26a17b" },
-        { label: "USDC", value: lastPieValues.usdc, color: "#2775ca" },
-        { label: "投資信託", value: lastPieValues.fund, color: "#c05621" },
-        { label: "預金", value: lastPieValues.deposit, color: "#4a5568" },
-        { label: "小規模企業共済", value: lastPieValues.kyosai, color: "#805ad5" }
-      ];
-      lastPieValues.custom.forEach((asset, index) => {
-        items.push({ label: asset.name, value: asset.amount, color: getCustomAssetColor(index) });
-      });
+      const items = buildAssetValueItems(lastPieValues);
 
       const total = items.reduce((sum, item) => sum + item.value, 0);
       const rect = assetPieEl.getBoundingClientRect();
@@ -1185,7 +1273,6 @@
       kyosaiYenEl.value = settings.kyosai || "";
       goalYenEl.value = settings.goal || "";
       renderCustomAssets(settings.customAssets);
-      renderCustomAssetStats(settings.customAssets);
 
       setStatus("価格を取得しています...", false);
 
@@ -1215,14 +1302,11 @@
         usdtPriceUsdEl.textContent = formatUsd(usdtPriceUsd);
         usdcPriceUsdEl.textContent = formatUsd(usdcPriceUsd);
         usdJpyEl.textContent = formatFx(usdJpy);
-        fundValueEl.textContent = formatYen(fundValueJpy);
-        depositValueEl.textContent = formatYen(depositValueJpy);
-        kyosaiValueEl.textContent = formatYen(kyosaiValueJpy);
         totalValueEl.textContent = formatYen(totalJpy);
         renderGoalProgress(totalJpy, settings.goal);
         renderMonthlySnapshot(totalJpy);
         drawYearTrendChart(buildTrendSeries());
-        drawAssetPie({
+        const assetValues = {
           btc: btcValueJpy,
           eth: ethValueJpy,
           usdt: usdtValueJpy,
@@ -1231,7 +1315,9 @@
           deposit: depositValueJpy,
           kyosai: kyosaiValueJpy,
           custom: settings.customAssets
-        });
+        };
+        renderAssetValueStats(assetValues);
+        drawAssetPie(assetValues);
 
         const now = new Date();
         if (usedCache && cacheUpdatedAt) {
@@ -1250,15 +1336,14 @@
         usdtPriceUsdEl.textContent = "-";
         usdcPriceUsdEl.textContent = "-";
         usdJpyEl.textContent = "-";
-        fundValueEl.textContent = formatYen(fundOnly);
-        depositValueEl.textContent = formatYen(depositOnly);
-        kyosaiValueEl.textContent = formatYen(kyosaiOnly);
         const fallbackTotal = fundOnly + depositOnly + kyosaiOnly + customOnly;
         totalValueEl.textContent = formatYen(fallbackTotal);
         renderGoalProgress(fallbackTotal, settings.goal);
         renderMonthlySnapshot(fallbackTotal);
         drawYearTrendChart(buildTrendSeries());
-        drawAssetPie({ btc: 0, eth: 0, usdt: 0, usdc: 0, fund: fundOnly, deposit: depositOnly, kyosai: kyosaiOnly, custom: settings.customAssets });
+        const fallbackAssetValues = { btc: 0, eth: 0, usdt: 0, usdc: 0, fund: fundOnly, deposit: depositOnly, kyosai: kyosaiOnly, custom: settings.customAssets };
+        renderAssetValueStats(fallbackAssetValues);
+        drawAssetPie(fallbackAssetValues);
       }
     }
 
@@ -1299,11 +1384,18 @@
       saveSettings(nextCustomAssets);
       resetCustomAssetEditor();
       renderCustomAssets(nextCustomAssets);
-      renderCustomAssetStats(nextCustomAssets);
       fetchAndRender();
     });
 
     cancelCustomAssetEditBtn.addEventListener("click", resetCustomAssetEditor);
+
+    downloadBackupBtn.addEventListener("click", downloadBackup);
+
+    restoreBackupInput.addEventListener("change", () => {
+      const file = restoreBackupInput.files && restoreBackupInput.files[0];
+      if (!file) return;
+      readBackupFile(file);
+    });
 
     customAssetListEl.addEventListener("click", (event) => {
       const editButton = event.target.closest("[data-edit-custom]");
@@ -1325,7 +1417,6 @@
       }
       saveSettings(nextCustomAssets);
       renderCustomAssets(nextCustomAssets);
-      renderCustomAssetStats(nextCustomAssets);
       fetchAndRender();
     });
 
